@@ -1,0 +1,5 @@
+project_root: .
+save_dir: results/runs
+checkpoint_dir: checkpoints
+log_dir: logs
+num_workers: 2

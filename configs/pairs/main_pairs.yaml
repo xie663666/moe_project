@@ -1,0 +1,8 @@
+pair_group: main_strong_6
+undirected_pairs:
+  - [vehicles1, vehicles2]
+  - [aquatic_mammals, fish]
+  - [flowers, trees]
+  - [insects, non_insect_invertebrates]
+  - [small_mammals, medium_sized_mammals]
+  - [large_carnivores, large_omnivores_herbivores]

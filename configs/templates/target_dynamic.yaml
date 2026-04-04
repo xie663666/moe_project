@@ -1,0 +1,5 @@
+experiment:
+  mode: target_dynamic
+transfer:
+  enabled: false
+  fixed_k: 0

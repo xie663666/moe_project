@@ -1,0 +1,37 @@
+tasks:
+  aquatic_mammals:
+    num_classes: 5
+    fine_classes: [beaver, dolphin, otter, seal, whale]
+  fish:
+    num_classes: 5
+    fine_classes: [aquarium_fish, flatfish, ray, shark, trout]
+  flowers:
+    num_classes: 5
+    fine_classes: [orchid, poppy, rose, sunflower, tulip]
+  insects:
+    num_classes: 5
+    fine_classes: [bee, beetle, butterfly, caterpillar, cockroach]
+  non_insect_invertebrates:
+    num_classes: 5
+    fine_classes: [crab, lobster, snail, spider, worm]
+  small_mammals:
+    num_classes: 5
+    fine_classes: [hamster, mouse, rabbit, shrew, squirrel]
+  medium_sized_mammals:
+    num_classes: 5
+    fine_classes: [fox, porcupine, possum, raccoon, skunk]
+  large_carnivores:
+    num_classes: 5
+    fine_classes: [bear, leopard, lion, tiger, wolf]
+  large_omnivores_herbivores:
+    num_classes: 5
+    fine_classes: [camel, cattle, chimpanzee, elephant, kangaroo]
+  trees:
+    num_classes: 5
+    fine_classes: [maple_tree, oak_tree, palm_tree, pine_tree, willow_tree]
+  vehicles1:
+    num_classes: 5
+    fine_classes: [bicycle, bus, motorcycle, pickup_truck, train]
+  vehicles2:
+    num_classes: 5
+    fine_classes: [lawn_mower, rocket, streetcar, tank, tractor]

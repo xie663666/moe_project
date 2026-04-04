@@ -1,0 +1,39 @@
+experiment:
+  mode: target_dynamic
+  run_id: dyn_p04_non_insect_invertebrates_to_insects_E16_K8_s1
+  pair_group: main_strong_6
+  pair_id: p04_non_insect_invertebrates_to_insects
+  seed: 1
+data:
+  dataset_name: cifar100_superclass_task
+  root: ./datasets
+  task_name: insects
+  num_classes: 5
+  val_ratio: 0.1
+transfer:
+  enabled: false
+  source_task: non_insect_invertebrates
+  target_task: insects
+  source_ref_run_id: ref_non_insect_invertebrates_E16_K8_s1
+  source_stats_path: ''
+  fixed_selection_rule: none
+  fixed_k: 0
+  dynamic_k: 8
+model:
+  feature_dim: 256
+  moe:
+    num_experts: 16
+    top_k: 8
+    expert_mlp_hidden_dim: 512
+train:
+  epochs: 10
+  batch_size: 128
+  optimizer:
+    lr: 0.001
+    weight_decay: 0.0001
+runtime:
+  project_root: .
+  save_dir: results/runs
+  checkpoint_dir: checkpoints
+  log_dir: logs
+  num_workers: 2

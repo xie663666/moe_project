@@ -1,0 +1,4 @@
+dataset_name: cifar100_superclass_task
+root: ./datasets
+val_ratio: 0.1
+num_classes: 5

@@ -1,0 +1,39 @@
+experiment:
+  mode: ref_dynamic
+  run_id: ref_flowers_E16_K4_s1
+  pair_group: reference
+  pair_id: null
+  seed: 1
+data:
+  dataset_name: cifar100_superclass_task
+  root: ./datasets
+  task_name: flowers
+  num_classes: 5
+  val_ratio: 0.1
+transfer:
+  enabled: false
+  source_task: flowers
+  target_task: flowers
+  source_ref_run_id: ref_flowers_E16_K4_s1
+  source_stats_path: ''
+  fixed_selection_rule: none
+  fixed_k: 0
+  dynamic_k: 4
+model:
+  feature_dim: 256
+  moe:
+    num_experts: 16
+    top_k: 4
+    expert_mlp_hidden_dim: 512
+train:
+  epochs: 10
+  batch_size: 128
+  optimizer:
+    lr: 0.001
+    weight_decay: 0.0001
+runtime:
+  project_root: .
+  save_dir: results/runs
+  checkpoint_dir: checkpoints
+  log_dir: logs
+  num_workers: 2

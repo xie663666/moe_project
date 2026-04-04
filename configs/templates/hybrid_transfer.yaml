@@ -1,0 +1,5 @@
+experiment:
+  mode: hybrid_transfer
+transfer:
+  enabled: true
+  fixed_selection_rule: source_topF_last3
