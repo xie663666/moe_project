@@ -2,13 +2,11 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 from pathlib import Path
 from typing import Dict, List
 
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from src.config import load_yaml
@@ -104,7 +102,8 @@ def evaluate(model, loader, criterion, device, stage_name="eval"):
 def main():
     args = parse_args()
     cfg = load_yaml(args.config)
-    set_seed(int(cfg["experiment"]["seed"]))
+    seed = int(cfg["experiment"]["seed"])
+    set_seed(seed)
 
     project_root = Path(cfg["runtime"]["project_root"]).resolve()
     save_root = project_root / cfg["runtime"]["save_dir"]
@@ -184,6 +183,7 @@ def main():
         "run_id": cfg["experiment"]["run_id"],
         "mode": cfg["experiment"]["mode"],
         "task_name": cfg["data"]["task_name"],
+        "seed": seed,
         "num_experts": cfg["model"]["moe"]["num_experts"],
         "top_k": cfg["model"]["moe"]["top_k"],
         "fixed_k": cfg["transfer"]["fixed_k"],
@@ -206,12 +206,13 @@ def main():
         )
 
     best_test_record = next(rec for rec in history if rec["epoch"] == best_epoch)
+    final_test_record = history[-1]
     summary = {
         "run_id": cfg["experiment"]["run_id"],
         "mode": cfg["experiment"]["mode"],
         "pair_group": cfg["experiment"].get("pair_group"),
         "pair_id": cfg["experiment"].get("pair_id"),
-        "seed": cfg["experiment"]["seed"],
+        "seed": seed,
         "source_task": cfg["transfer"].get("source_task"),
         "target_task": cfg["transfer"].get("target_task"),
         "task_name": cfg["data"]["task_name"],
@@ -230,11 +231,17 @@ def main():
         "best_test_macro_f1": best_test_record["test"]["macro_f1"],
         "best_test_loss": best_test_record["test"]["loss"],
         "best_test_routing_entropy": best_test_record["test"]["routing_entropy"],
+        "final_test_acc": final_test_record["test"]["acc"],
+        "final_test_macro_f1": final_test_record["test"]["macro_f1"],
+        "final_test_loss": final_test_record["test"]["loss"],
+        "final_test_routing_entropy": final_test_record["test"]["routing_entropy"],
         "train_size": dataset_meta["train_size"],
         "val_size": dataset_meta["val_size"],
         "test_size": dataset_meta["test_size"],
         "checkpoint_path": str(best_ckpt_path),
         "config_path": str(run_dir / "config_snapshot.yaml"),
+        "run_dir": str(run_dir),
+        "log_path": str(log_dir / f"{cfg['experiment']['run_id']}.log"),
     }
     save_json(run_dir / "run_summary.json", summary)
 
@@ -243,6 +250,7 @@ def main():
         "source_task": cfg["transfer"].get("source_task"),
         "target_task": cfg["transfer"].get("target_task"),
         "source_ref_run_id": cfg["transfer"].get("source_ref_run_id"),
+        "source_stats_path": cfg["transfer"].get("source_stats_path"),
         "num_experts": cfg["model"]["moe"]["num_experts"],
         "top_k": cfg["model"]["moe"]["top_k"],
         "fixed_k": cfg["transfer"]["fixed_k"],

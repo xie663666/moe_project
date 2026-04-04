@@ -7,9 +7,15 @@ experiment:
 data:
   dataset_name: cifar100_superclass_task
   root: ./datasets
-  task_name: large_omnivores_herbivores
-  num_classes: 5
   val_ratio: 0.1
+  num_classes: 5
+  task_name: large_omnivores_herbivores
+  fine_classes:
+  - camel
+  - cattle
+  - chimpanzee
+  - elephant
+  - kangaroo
 transfer:
   enabled: false
   source_task: large_omnivores_herbivores
@@ -22,9 +28,13 @@ transfer:
 model:
   feature_dim: 256
   moe:
+    num_layers: 1
+    expert_mlp_hidden_dim: 512
     num_experts: 32
     top_k: 4
-    expert_mlp_hidden_dim: 512
+  classifier:
+    in_dim: 256
+    out_dim: 5
 train:
   epochs: 10
   batch_size: 128

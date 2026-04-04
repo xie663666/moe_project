@@ -8,15 +8,25 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import argparse
+import re
 from pathlib import Path
 from typing import Dict, List
 
 from src.utils import load_json, save_json
 
 
+def infer_seed(run_id: str | None) -> int | None:
+    if not run_id:
+        return None
+    match = re.search(r"_s(\d+)$", run_id)
+    return int(match.group(1)) if match else None
+
+
 def build_last3_stats(per_epoch_path: str | Path, total_epochs: int | None = None):
     data = load_json(per_epoch_path)
     epochs = data["epochs"]
+    if len(epochs) < 3:
+        raise ValueError(f"need at least 3 epochs for last3 stats: {per_epoch_path}")
     selected = epochs[-3:]
     epoch_ids = [item["epoch"] for item in selected]
 
@@ -43,10 +53,11 @@ def build_last3_stats(per_epoch_path: str | Path, total_epochs: int | None = Non
         "run_id": data["run_id"],
         "task_name": data["task_name"],
         "mode": data["mode"],
-        "seed": None,
+        "seed": data.get("seed", infer_seed(data.get("run_id"))),
         "num_experts": data["num_experts"],
         "top_k": data["top_k"],
         "fixed_k": data["fixed_k"],
+        "dynamic_k": data.get("dynamic_k"),
         "stats_window_epochs": 3,
         "total_epochs": total_epochs or len(epochs),
         "window_epoch_indices": epoch_ids,
@@ -64,17 +75,37 @@ def build_last3_stats(per_epoch_path: str | Path, total_epochs: int | None = Non
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--run-dir", type=str, required=True)
+    parser.add_argument("--run-dir", type=str, default=None)
+    parser.add_argument("--results-root", type=str, default=None)
     return parser.parse_args()
+
+
+def rebuild_one(run_dir: Path):
+    src = run_dir / "expert_stats_per_epoch.json"
+    dst = run_dir / "expert_stats_last3.json"
+    save_json(dst, build_last3_stats(src))
+    return dst
 
 
 def main():
     args = parse_args()
-    run_dir = Path(args.run_dir)
-    src = run_dir / "expert_stats_per_epoch.json"
-    dst = run_dir / "expert_stats_last3.json"
-    save_json(dst, build_last3_stats(src))
-    print(f"saved: {dst}")
+    if args.run_dir:
+        run_dir = Path(args.run_dir)
+        dst = rebuild_one(run_dir)
+        print(f"saved: {dst}")
+        return
+
+    if args.results_root:
+        results_root = Path(args.results_root)
+        count = 0
+        for run_dir in sorted(results_root.glob("ref_*/")):
+            if (run_dir / "expert_stats_per_epoch.json").exists():
+                rebuild_one(run_dir)
+                count += 1
+        print(f"rebuilt ref stats for {count} run(s)")
+        return
+
+    raise SystemExit("either --run-dir or --results-root is required")
 
 
 if __name__ == "__main__":
