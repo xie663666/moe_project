@@ -1,0 +1,25 @@
+{
+  "pair_id": "p06_large_omnivores_herbivores_to_large_carnivores",
+  "source_task": "large_omnivores_herbivores",
+  "target_task": "large_carnivores",
+  "source_ref_run_id": "ref_large_omnivores_herbivores_E32_K8_s1",
+  "source_stats_path": "./results/runs/ref_large_omnivores_herbivores_E32_K8_s1/expert_stats_last3.json",
+  "num_experts": 32,
+  "top_k": 8,
+  "fixed_k": 8,
+  "dynamic_k": 0,
+  "layers": {
+    "moe_0": {
+      "fixed_experts": [
+        23,
+        18,
+        6,
+        25,
+        22,
+        27,
+        10,
+        16
+      ]
+    }
+  }
+}

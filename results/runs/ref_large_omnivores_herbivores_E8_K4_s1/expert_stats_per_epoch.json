@@ -1,0 +1,382 @@
+{
+  "run_id": "ref_large_omnivores_herbivores_E8_K4_s1",
+  "mode": "ref_dynamic",
+  "task_name": "large_omnivores_herbivores",
+  "seed": 1,
+  "num_experts": 8,
+  "top_k": 4,
+  "fixed_k": 0,
+  "dynamic_k": 4,
+  "epochs": [
+    {
+      "epoch": 1,
+      "layers": {
+        "moe_0": {
+          "selection_counts": [
+            276,
+            21,
+            2625,
+            1060,
+            2274,
+            2697,
+            2333,
+            714
+          ],
+          "fixed_selection_counts": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "dynamic_selection_counts": [
+            276,
+            21,
+            2625,
+            1060,
+            2274,
+            2697,
+            2333,
+            714
+          ]
+        }
+      }
+    },
+    {
+      "epoch": 2,
+      "layers": {
+        "moe_0": {
+          "selection_counts": [
+            76,
+            0,
+            2715,
+            1025,
+            2042,
+            2720,
+            2773,
+            649
+          ],
+          "fixed_selection_counts": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "dynamic_selection_counts": [
+            76,
+            0,
+            2715,
+            1025,
+            2042,
+            2720,
+            2773,
+            649
+          ]
+        }
+      }
+    },
+    {
+      "epoch": 3,
+      "layers": {
+        "moe_0": {
+          "selection_counts": [
+            38,
+            0,
+            2722,
+            1188,
+            2039,
+            2822,
+            2769,
+            422
+          ],
+          "fixed_selection_counts": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "dynamic_selection_counts": [
+            38,
+            0,
+            2722,
+            1188,
+            2039,
+            2822,
+            2769,
+            422
+          ]
+        }
+      }
+    },
+    {
+      "epoch": 4,
+      "layers": {
+        "moe_0": {
+          "selection_counts": [
+            48,
+            0,
+            2845,
+            1294,
+            2232,
+            2717,
+            2817,
+            47
+          ],
+          "fixed_selection_counts": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "dynamic_selection_counts": [
+            48,
+            0,
+            2845,
+            1294,
+            2232,
+            2717,
+            2817,
+            47
+          ]
+        }
+      }
+    },
+    {
+      "epoch": 5,
+      "layers": {
+        "moe_0": {
+          "selection_counts": [
+            62,
+            0,
+            2867,
+            1183,
+            2314,
+            2691,
+            2852,
+            31
+          ],
+          "fixed_selection_counts": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "dynamic_selection_counts": [
+            62,
+            0,
+            2867,
+            1183,
+            2314,
+            2691,
+            2852,
+            31
+          ]
+        }
+      }
+    },
+    {
+      "epoch": 6,
+      "layers": {
+        "moe_0": {
+          "selection_counts": [
+            152,
+            0,
+            2787,
+            1230,
+            2340,
+            2664,
+            2812,
+            15
+          ],
+          "fixed_selection_counts": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "dynamic_selection_counts": [
+            152,
+            0,
+            2787,
+            1230,
+            2340,
+            2664,
+            2812,
+            15
+          ]
+        }
+      }
+    },
+    {
+      "epoch": 7,
+      "layers": {
+        "moe_0": {
+          "selection_counts": [
+            154,
+            0,
+            2902,
+            1188,
+            2328,
+            2570,
+            2841,
+            17
+          ],
+          "fixed_selection_counts": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "dynamic_selection_counts": [
+            154,
+            0,
+            2902,
+            1188,
+            2328,
+            2570,
+            2841,
+            17
+          ]
+        }
+      }
+    },
+    {
+      "epoch": 8,
+      "layers": {
+        "moe_0": {
+          "selection_counts": [
+            135,
+            0,
+            2896,
+            913,
+            2424,
+            2710,
+            2889,
+            33
+          ],
+          "fixed_selection_counts": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "dynamic_selection_counts": [
+            135,
+            0,
+            2896,
+            913,
+            2424,
+            2710,
+            2889,
+            33
+          ]
+        }
+      }
+    },
+    {
+      "epoch": 9,
+      "layers": {
+        "moe_0": {
+          "selection_counts": [
+            73,
+            0,
+            2929,
+            958,
+            2378,
+            2716,
+            2855,
+            91
+          ],
+          "fixed_selection_counts": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "dynamic_selection_counts": [
+            73,
+            0,
+            2929,
+            958,
+            2378,
+            2716,
+            2855,
+            91
+          ]
+        }
+      }
+    },
+    {
+      "epoch": 10,
+      "layers": {
+        "moe_0": {
+          "selection_counts": [
+            44,
+            2,
+            2931,
+            804,
+            2537,
+            2716,
+            2924,
+            42
+          ],
+          "fixed_selection_counts": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "dynamic_selection_counts": [
+            44,
+            2,
+            2931,
+            804,
+            2537,
+            2716,
+            2924,
+            42
+          ]
+        }
+      }
+    }
+  ]
+}

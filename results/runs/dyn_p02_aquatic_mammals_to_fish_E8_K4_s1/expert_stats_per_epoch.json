@@ -1,0 +1,382 @@
+{
+  "run_id": "dyn_p02_aquatic_mammals_to_fish_E8_K4_s1",
+  "mode": "target_dynamic",
+  "task_name": "fish",
+  "seed": 1,
+  "num_experts": 8,
+  "top_k": 4,
+  "fixed_k": 0,
+  "dynamic_k": 4,
+  "epochs": [
+    {
+      "epoch": 1,
+      "layers": {
+        "moe_0": {
+          "selection_counts": [
+            113,
+            769,
+            909,
+            2098,
+            2001,
+            2207,
+            2057,
+            1846
+          ],
+          "fixed_selection_counts": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "dynamic_selection_counts": [
+            113,
+            769,
+            909,
+            2098,
+            2001,
+            2207,
+            2057,
+            1846
+          ]
+        }
+      }
+    },
+    {
+      "epoch": 2,
+      "layers": {
+        "moe_0": {
+          "selection_counts": [
+            47,
+            904,
+            930,
+            2572,
+            1883,
+            1943,
+            1806,
+            1915
+          ],
+          "fixed_selection_counts": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "dynamic_selection_counts": [
+            47,
+            904,
+            930,
+            2572,
+            1883,
+            1943,
+            1806,
+            1915
+          ]
+        }
+      }
+    },
+    {
+      "epoch": 3,
+      "layers": {
+        "moe_0": {
+          "selection_counts": [
+            77,
+            1090,
+            638,
+            2731,
+            1893,
+            1808,
+            1787,
+            1976
+          ],
+          "fixed_selection_counts": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "dynamic_selection_counts": [
+            77,
+            1090,
+            638,
+            2731,
+            1893,
+            1808,
+            1787,
+            1976
+          ]
+        }
+      }
+    },
+    {
+      "epoch": 4,
+      "layers": {
+        "moe_0": {
+          "selection_counts": [
+            2,
+            944,
+            775,
+            2719,
+            2000,
+            1683,
+            1821,
+            2056
+          ],
+          "fixed_selection_counts": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "dynamic_selection_counts": [
+            2,
+            944,
+            775,
+            2719,
+            2000,
+            1683,
+            1821,
+            2056
+          ]
+        }
+      }
+    },
+    {
+      "epoch": 5,
+      "layers": {
+        "moe_0": {
+          "selection_counts": [
+            0,
+            892,
+            770,
+            2774,
+            1922,
+            1588,
+            1897,
+            2157
+          ],
+          "fixed_selection_counts": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "dynamic_selection_counts": [
+            0,
+            892,
+            770,
+            2774,
+            1922,
+            1588,
+            1897,
+            2157
+          ]
+        }
+      }
+    },
+    {
+      "epoch": 6,
+      "layers": {
+        "moe_0": {
+          "selection_counts": [
+            1,
+            550,
+            1086,
+            2800,
+            2034,
+            1387,
+            1973,
+            2169
+          ],
+          "fixed_selection_counts": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "dynamic_selection_counts": [
+            1,
+            550,
+            1086,
+            2800,
+            2034,
+            1387,
+            1973,
+            2169
+          ]
+        }
+      }
+    },
+    {
+      "epoch": 7,
+      "layers": {
+        "moe_0": {
+          "selection_counts": [
+            0,
+            621,
+            856,
+            2586,
+            1877,
+            1871,
+            1995,
+            2194
+          ],
+          "fixed_selection_counts": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "dynamic_selection_counts": [
+            0,
+            621,
+            856,
+            2586,
+            1877,
+            1871,
+            1995,
+            2194
+          ]
+        }
+      }
+    },
+    {
+      "epoch": 8,
+      "layers": {
+        "moe_0": {
+          "selection_counts": [
+            0,
+            713,
+            803,
+            2858,
+            1783,
+            1807,
+            1877,
+            2159
+          ],
+          "fixed_selection_counts": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "dynamic_selection_counts": [
+            0,
+            713,
+            803,
+            2858,
+            1783,
+            1807,
+            1877,
+            2159
+          ]
+        }
+      }
+    },
+    {
+      "epoch": 9,
+      "layers": {
+        "moe_0": {
+          "selection_counts": [
+            0,
+            700,
+            896,
+            2930,
+            1887,
+            1439,
+            1977,
+            2171
+          ],
+          "fixed_selection_counts": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "dynamic_selection_counts": [
+            0,
+            700,
+            896,
+            2930,
+            1887,
+            1439,
+            1977,
+            2171
+          ]
+        }
+      }
+    },
+    {
+      "epoch": 10,
+      "layers": {
+        "moe_0": {
+          "selection_counts": [
+            1,
+            553,
+            1001,
+            2758,
+            1928,
+            1547,
+            1967,
+            2245
+          ],
+          "fixed_selection_counts": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "dynamic_selection_counts": [
+            1,
+            553,
+            1001,
+            2758,
+            1928,
+            1547,
+            1967,
+            2245
+          ]
+        }
+      }
+    }
+  ]
+}

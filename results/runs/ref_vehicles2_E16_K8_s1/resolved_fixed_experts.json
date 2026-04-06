@@ -1,0 +1,16 @@
+{
+  "pair_id": null,
+  "source_task": "vehicles2",
+  "target_task": "vehicles2",
+  "source_ref_run_id": "ref_vehicles2_E16_K8_s1",
+  "source_stats_path": "",
+  "num_experts": 16,
+  "top_k": 8,
+  "fixed_k": 0,
+  "dynamic_k": 8,
+  "layers": {
+    "moe_0": {
+      "fixed_experts": []
+    }
+  }
+}

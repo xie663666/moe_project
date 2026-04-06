@@ -1,0 +1,49 @@
+experiment:
+  mode: hybrid_transfer
+  run_id: hyb_p03_flowers_to_trees_E32_K8_F1_s1
+  pair_group: main_strong_6
+  pair_id: p03_flowers_to_trees
+  seed: 1
+data:
+  dataset_name: cifar100_superclass_task
+  root: ./datasets
+  val_ratio: 0.1
+  num_classes: 5
+  task_name: trees
+  fine_classes:
+  - maple_tree
+  - oak_tree
+  - palm_tree
+  - pine_tree
+  - willow_tree
+transfer:
+  enabled: true
+  source_task: flowers
+  target_task: trees
+  source_ref_run_id: ref_flowers_E32_K8_s1
+  source_stats_path: ./results/runs/ref_flowers_E32_K8_s1/expert_stats_last3.json
+  fixed_selection_rule: source_topF_last3
+  fixed_k: 1
+  dynamic_k: 7
+model:
+  feature_dim: 256
+  moe:
+    num_layers: 1
+    expert_mlp_hidden_dim: 512
+    num_experts: 32
+    top_k: 8
+  classifier:
+    in_dim: 256
+    out_dim: 5
+train:
+  epochs: 10
+  batch_size: 128
+  optimizer:
+    lr: 0.001
+    weight_decay: 0.0001
+runtime:
+  project_root: .
+  save_dir: results/runs
+  checkpoint_dir: checkpoints
+  log_dir: logs
+  num_workers: 2

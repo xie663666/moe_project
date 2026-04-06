@@ -1,0 +1,16 @@
+{
+  "pair_id": null,
+  "source_task": "insects",
+  "target_task": "insects",
+  "source_ref_run_id": "ref_insects_E16_K6_s1",
+  "source_stats_path": "",
+  "num_experts": 16,
+  "top_k": 6,
+  "fixed_k": 0,
+  "dynamic_k": 6,
+  "layers": {
+    "moe_0": {
+      "fixed_experts": []
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "pair_id": "p01_vehicles2_to_vehicles1",
+  "source_task": "vehicles2",
+  "target_task": "vehicles1",
+  "source_ref_run_id": "ref_vehicles2_E32_K4_s1",
+  "source_stats_path": "./results/runs/ref_vehicles2_E32_K4_s1/expert_stats_last3.json",
+  "num_experts": 32,
+  "top_k": 4,
+  "fixed_k": 4,
+  "dynamic_k": 0,
+  "layers": {
+    "moe_0": {
+      "fixed_experts": [
+        31,
+        6,
+        9,
+        23
+      ]
+    }
+  }
+}

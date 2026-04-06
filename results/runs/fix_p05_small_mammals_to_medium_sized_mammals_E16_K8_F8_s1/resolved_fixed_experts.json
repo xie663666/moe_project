@@ -1,0 +1,25 @@
+{
+  "pair_id": "p05_small_mammals_to_medium_sized_mammals",
+  "source_task": "small_mammals",
+  "target_task": "medium_sized_mammals",
+  "source_ref_run_id": "ref_small_mammals_E16_K8_s1",
+  "source_stats_path": "./results/runs/ref_small_mammals_E16_K8_s1/expert_stats_last3.json",
+  "num_experts": 16,
+  "top_k": 8,
+  "fixed_k": 8,
+  "dynamic_k": 0,
+  "layers": {
+    "moe_0": {
+      "fixed_experts": [
+        5,
+        2,
+        8,
+        9,
+        7,
+        3,
+        6,
+        13
+      ]
+    }
+  }
+}

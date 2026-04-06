@@ -1,0 +1,19 @@
+{
+  "pair_id": "p04_non_insect_invertebrates_to_insects",
+  "source_task": "non_insect_invertebrates",
+  "target_task": "insects",
+  "source_ref_run_id": "ref_non_insect_invertebrates_E32_K8_s1",
+  "source_stats_path": "./results/runs/ref_non_insect_invertebrates_E32_K8_s1/expert_stats_last3.json",
+  "num_experts": 32,
+  "top_k": 8,
+  "fixed_k": 2,
+  "dynamic_k": 6,
+  "layers": {
+    "moe_0": {
+      "fixed_experts": [
+        23,
+        31
+      ]
+    }
+  }
+}

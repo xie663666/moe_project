@@ -1,0 +1,25 @@
+{
+  "pair_id": "p03_trees_to_flowers",
+  "source_task": "trees",
+  "target_task": "flowers",
+  "source_ref_run_id": "ref_trees_E32_K8_s1",
+  "source_stats_path": "./results/runs/ref_trees_E32_K8_s1/expert_stats_last3.json",
+  "num_experts": 32,
+  "top_k": 8,
+  "fixed_k": 8,
+  "dynamic_k": 0,
+  "layers": {
+    "moe_0": {
+      "fixed_experts": [
+        23,
+        6,
+        31,
+        4,
+        14,
+        8,
+        27,
+        24
+      ]
+    }
+  }
+}

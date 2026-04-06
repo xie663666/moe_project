@@ -1,0 +1,16 @@
+{
+  "pair_id": "p02_fish_to_aquatic_mammals",
+  "source_task": "fish",
+  "target_task": "aquatic_mammals",
+  "source_ref_run_id": "ref_fish_E8_K4_s1",
+  "source_stats_path": "",
+  "num_experts": 8,
+  "top_k": 4,
+  "fixed_k": 0,
+  "dynamic_k": 4,
+  "layers": {
+    "moe_0": {
+      "fixed_experts": []
+    }
+  }
+}

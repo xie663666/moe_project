@@ -1,0 +1,19 @@
+{
+  "pair_id": "p06_large_carnivores_to_large_omnivores_herbivores",
+  "source_task": "large_carnivores",
+  "target_task": "large_omnivores_herbivores",
+  "source_ref_run_id": "ref_large_carnivores_E16_K4_s1",
+  "source_stats_path": "./results/runs/ref_large_carnivores_E16_K4_s1/expert_stats_last3.json",
+  "num_experts": 16,
+  "top_k": 4,
+  "fixed_k": 2,
+  "dynamic_k": 2,
+  "layers": {
+    "moe_0": {
+      "fixed_experts": [
+        4,
+        5
+      ]
+    }
+  }
+}
