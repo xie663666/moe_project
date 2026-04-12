@@ -47,8 +47,7 @@ def train_one_epoch(model, loader, optimizer, criterion, device, load_balance_co
 
         optimizer.zero_grad(set_to_none=True)
         logits, aux = model(images, track_usage=True)
-        ce_loss = criterion(logits, labels)
-        loss = ce_loss + float(load_balance_coef) * aux["load_balance_loss"]
+        loss = criterion(logits, labels)
         loss.backward()
         optimizer.step()
 

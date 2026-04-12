@@ -48,10 +48,6 @@ In this repo, transfer configs now support:
   - `reuse_source_expert_weights: true/false`
   - `freeze_fixed_experts: true/false`
   - `source_checkpoint_path` (optional override)
-- runtime controls:
-  - `model.moe.router_noise_std` (set `0.0` for no routing noise)
-  - `train.load_balance_coef` (set `0.0` to disable load-balancing regularization)
-  - per-epoch timing and top selected experts are recorded in `metrics_history.json`
 
 ## One-click usage
 
