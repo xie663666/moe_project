@@ -206,6 +206,17 @@ def main():
                     hyb_cfg["transfer"]["dynamic_k"] = K - F
                     write_config(hyb_dir / f"{run_id}.yaml", hyb_cfg)
 
+                    rand_prefix = "rand_hyb" if F < K else "rand_fix"
+                    rand_run_id = f"{rand_prefix}_{pair_id}_E{E}_K{K}_F{F}_s{seed}"
+                    rand_cfg = deep_merge(hyb_cfg, {})
+                    rand_cfg["experiment"]["run_id"] = rand_run_id
+                    rand_cfg["experiment"]["mode"] = "hybrid_random_control"
+                    rand_cfg["transfer"]["fixed_selection_rule"] = "random"
+                    rand_cfg["transfer"]["source_stats_path"] = ""
+                    rand_cfg["transfer"]["reuse_source_expert_weights"] = False
+                    rand_cfg["transfer"]["source_checkpoint_path"] = ""
+                    write_config(hyb_dir / f"{rand_run_id}.yaml", rand_cfg)
+
     print(f"generated configs under: {out_root}")
 
 

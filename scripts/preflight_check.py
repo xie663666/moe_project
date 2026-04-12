@@ -47,7 +47,7 @@ def validate_generated_counts(cfgs: Dict[str, List[Path]], directed_pairs_count:
     if cfgs["ref"] and len(cfgs["ref"]) != expected_ref:
         errors.append(f"unexpected ref config count: got {len(cfgs['ref'])}, expected {expected_ref}")
     expected_dyn = directed_pairs_count * 7
-    expected_hyb = directed_pairs_count * 30
+    expected_hyb = directed_pairs_count * 60
     if cfgs["dynamic"] and len(cfgs["dynamic"]) != expected_dyn:
         errors.append(f"unexpected dynamic config count: got {len(cfgs['dynamic'])}, expected {expected_dyn}")
     if cfgs["hybrid"] and len(cfgs["hybrid"]) != expected_hyb:
@@ -86,6 +86,11 @@ def validate_reference_stats_exist(root: Path, hybrid_cfgs: Iterable[Path]) -> L
     errors = []
     for path in hybrid_cfgs:
         cfg = load_yaml(path)
+        rule = cfg["transfer"].get("fixed_selection_rule", "source_topF_last3")
+        if int(cfg["transfer"]["fixed_k"]) == 0:
+            continue
+        if rule != "source_topF_last3":
+            continue
         stats_path = Path(cfg["transfer"]["source_stats_path"])
         if not stats_path.is_absolute():
             stats_path = root / stats_path

@@ -12,7 +12,7 @@ from tqdm import tqdm
 from src.config import load_yaml
 from src.data import build_task_dataloaders
 from src.model import LiteCNNMoEClassifier
-from src.transfer import resolve_fixed_experts
+from src.transfer import maybe_load_source_expert_weights, resolve_fixed_experts
 from src.utils import (
     AverageMeter,
     accuracy_from_logits,
@@ -129,6 +129,16 @@ def main():
         hidden_dim=cfg["model"]["moe"]["expert_mlp_hidden_dim"],
         num_classes=cfg["data"]["num_classes"],
     ).to(device)
+    source_ckpt_loaded = None
+    source_copied_experts: List[int] = []
+    loaded = maybe_load_source_expert_weights(model, cfg, fixed_experts, project_root)
+    if loaded is not None:
+        source_ckpt_loaded, source_copied_experts = loaded
+
+    if bool(cfg["transfer"].get("freeze_fixed_experts", False)) and fixed_experts:
+        for idx in fixed_experts:
+            for param in model.moe.experts[idx].parameters():
+                param.requires_grad = False
 
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.AdamW(
@@ -224,6 +234,11 @@ def main():
         "fixed_ratio": cfg["transfer"]["fixed_k"] / max(1, cfg["model"]["moe"]["top_k"]),
         "source_ref_run_id": cfg["transfer"].get("source_ref_run_id"),
         "source_stats_path": cfg["transfer"].get("source_stats_path"),
+        "fixed_selection_rule": cfg["transfer"].get("fixed_selection_rule"),
+        "reuse_source_expert_weights": bool(cfg["transfer"].get("reuse_source_expert_weights", False)),
+        "freeze_fixed_experts": bool(cfg["transfer"].get("freeze_fixed_experts", False)),
+        "source_checkpoint_path": source_ckpt_loaded,
+        "source_copied_experts": source_copied_experts,
         "fixed_experts": fixed_experts,
         "best_val_epoch": best_epoch,
         "best_val_acc": best_val_acc,
@@ -251,6 +266,11 @@ def main():
         "target_task": cfg["transfer"].get("target_task"),
         "source_ref_run_id": cfg["transfer"].get("source_ref_run_id"),
         "source_stats_path": cfg["transfer"].get("source_stats_path"),
+        "fixed_selection_rule": cfg["transfer"].get("fixed_selection_rule"),
+        "reuse_source_expert_weights": bool(cfg["transfer"].get("reuse_source_expert_weights", False)),
+        "freeze_fixed_experts": bool(cfg["transfer"].get("freeze_fixed_experts", False)),
+        "source_checkpoint_path": source_ckpt_loaded,
+        "source_copied_experts": source_copied_experts,
         "num_experts": cfg["model"]["moe"]["num_experts"],
         "top_k": cfg["model"]["moe"]["top_k"],
         "fixed_k": cfg["transfer"]["fixed_k"],
