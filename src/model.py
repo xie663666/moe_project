@@ -60,9 +60,15 @@ class SingleLayerMoE(nn.Module):
         self.top_k = top_k
         self.fixed_experts = sorted(fixed_experts or [])
         self.router_noise_std = float(router_noise_std)
+        self.frozen_experts = set()
+        self.frozen_experts_no_grad = False
         self.router = nn.Linear(dim, num_experts)
         self.experts = nn.ModuleList([MLPExpert(dim, hidden_dim) for _ in range(num_experts)])
         self.reset_epoch_usage()
+
+    def set_frozen_experts(self, frozen_experts: List[int], no_grad_mode: bool):
+        self.frozen_experts = set(int(i) for i in frozen_experts)
+        self.frozen_experts_no_grad = bool(no_grad_mode)
 
     def reset_epoch_usage(self):
         self.epoch_usage = {
@@ -124,7 +130,12 @@ class SingleLayerMoE(nn.Module):
             token_ids, slot_ids = expert_mask.nonzero(as_tuple=True)
             if token_ids.numel() == 0:
                 continue
-            expert_out = self.experts[expert_idx](x[token_ids])
+            if self.training and self.frozen_experts_no_grad and expert_idx in self.frozen_experts:
+                with torch.no_grad():
+                    expert_out = self.experts[expert_idx](x[token_ids].detach())
+                expert_out = expert_out.detach()
+            else:
+                expert_out = self.experts[expert_idx](x[token_ids])
             weighted = expert_out * gates[token_ids, slot_ids].unsqueeze(-1)
             mixed.index_add_(0, token_ids, weighted)
 

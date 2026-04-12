@@ -43,11 +43,20 @@ def load_generated_configs(root: Path) -> Dict[str, List[Path]]:
 
 def validate_generated_counts(cfgs: Dict[str, List[Path]], directed_pairs_count: int, unique_source_tasks_count: int) -> List[str]:
     errors = []
-    expected_ref = 7 * unique_source_tasks_count
+    per_seed_ref = 7 * unique_source_tasks_count
+    if cfgs["ref"] and len(cfgs["ref"]) % max(1, per_seed_ref) != 0:
+        errors.append(
+            f"unexpected ref config count: got {len(cfgs['ref'])}, expected a multiple of {per_seed_ref}"
+        )
+        return errors
+
+    seed_count = max(1, len(cfgs["ref"]) // max(1, per_seed_ref))
+    expected_ref = per_seed_ref * seed_count
     if cfgs["ref"] and len(cfgs["ref"]) != expected_ref:
         errors.append(f"unexpected ref config count: got {len(cfgs['ref'])}, expected {expected_ref}")
-    expected_dyn = directed_pairs_count * 7
-    expected_hyb = directed_pairs_count * 60
+
+    expected_dyn = directed_pairs_count * 7 * seed_count
+    expected_hyb = directed_pairs_count * 60 * seed_count
     if cfgs["dynamic"] and len(cfgs["dynamic"]) != expected_dyn:
         errors.append(f"unexpected dynamic config count: got {len(cfgs['dynamic'])}, expected {expected_dyn}")
     if cfgs["hybrid"] and len(cfgs["hybrid"]) != expected_hyb:

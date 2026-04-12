@@ -1,4 +1,4 @@
-epochs: 10
+epochs: 100
 batch_size: 128
 load_balance_coef: 0.0
 optimizer:

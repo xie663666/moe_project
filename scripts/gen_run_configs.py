@@ -30,7 +30,7 @@ def parse_args():
     parser.add_argument("--tasks", type=str, required=True)
     parser.add_argument("--pairs", type=str, required=True)
     parser.add_argument("--output", type=str, required=True)
-    parser.add_argument("--seeds", type=int, nargs="+", default=[1])
+    parser.add_argument("--seeds", type=int, nargs="+", default=[1, 2, 3])
     return parser.parse_args()
 
 

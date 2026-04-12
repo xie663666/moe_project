@@ -47,7 +47,8 @@ def train_one_epoch(model, loader, optimizer, criterion, device, load_balance_co
 
         optimizer.zero_grad(set_to_none=True)
         logits, aux = model(images, track_usage=True)
-        loss = criterion(logits, labels)
+        ce_loss = criterion(logits, labels)
+        loss = ce_loss + float(load_balance_coef) * aux["load_balance_loss"]
         loss.backward()
         optimizer.step()
 
@@ -148,6 +149,10 @@ def main():
         for idx in fixed_experts:
             for param in model.moe.experts[idx].parameters():
                 param.requires_grad = False
+    model.moe.set_frozen_experts(
+        fixed_experts if bool(cfg["transfer"].get("freeze_fixed_experts", False)) else [],
+        no_grad_mode=bool(cfg["transfer"].get("accelerate_fixed_experts", False)),
+    )
 
     criterion = nn.CrossEntropyLoss()
     load_balance_coef = float(cfg["train"].get("load_balance_coef", 0.0))
@@ -264,6 +269,7 @@ def main():
         "fixed_selection_rule": cfg["transfer"].get("fixed_selection_rule"),
         "reuse_source_expert_weights": bool(cfg["transfer"].get("reuse_source_expert_weights", False)),
         "freeze_fixed_experts": bool(cfg["transfer"].get("freeze_fixed_experts", False)),
+        "accelerate_fixed_experts": bool(cfg["transfer"].get("accelerate_fixed_experts", False)),
         "source_checkpoint_path": source_ckpt_loaded,
         "source_copied_experts": source_copied_experts,
         "fixed_experts": fixed_experts,
@@ -297,6 +303,7 @@ def main():
         "fixed_selection_rule": cfg["transfer"].get("fixed_selection_rule"),
         "reuse_source_expert_weights": bool(cfg["transfer"].get("reuse_source_expert_weights", False)),
         "freeze_fixed_experts": bool(cfg["transfer"].get("freeze_fixed_experts", False)),
+        "accelerate_fixed_experts": bool(cfg["transfer"].get("accelerate_fixed_experts", False)),
         "source_checkpoint_path": source_ckpt_loaded,
         "source_copied_experts": source_copied_experts,
         "num_experts": cfg["model"]["moe"]["num_experts"],
