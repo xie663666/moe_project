@@ -31,7 +31,7 @@ def parse_args():
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
     return parser.parse_args()
 
-
+S
 def train_one_epoch(model, loader, optimizer, criterion, device, load_balance_coef: float = 0.0):
     model.train()
     loss_meter = AverageMeter()
@@ -145,19 +145,28 @@ def main():
     if loaded is not None:
         source_ckpt_loaded, source_copied_experts = loaded
 
-    if bool(cfg["transfer"].get("freeze_fixed_experts", False)) and fixed_experts:
+    reuse_source = bool(cfg["transfer"].get("reuse_source_expert_weights", False))
+    freeze_fixed = bool(cfg["transfer"].get("freeze_fixed_experts", False))
+    accelerate_fixed = bool(cfg["transfer"].get("accelerate_fixed_experts", False))
+    if freeze_fixed and fixed_experts and not reuse_source:
+        raise ValueError("freeze_fixed_experts=True requires reuse_source_expert_weights=True for direct source reuse experiments")
+    if accelerate_fixed and not freeze_fixed:
+        accelerate_fixed = False
+
+    if freeze_fixed and fixed_experts:
         for idx in fixed_experts:
             for param in model.moe.experts[idx].parameters():
                 param.requires_grad = False
     model.moe.set_frozen_experts(
-        fixed_experts if bool(cfg["transfer"].get("freeze_fixed_experts", False)) else [],
-        no_grad_mode=bool(cfg["transfer"].get("accelerate_fixed_experts", False)),
+        fixed_experts if freeze_fixed else [],
+        no_grad_mode=accelerate_fixed,
     )
 
     criterion = nn.CrossEntropyLoss()
     load_balance_coef = float(cfg["train"].get("load_balance_coef", 0.0))
+    trainable_params = [p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.AdamW(
-        model.parameters(),
+        trainable_params,
         lr=float(cfg["train"]["optimizer"]["lr"]),
         weight_decay=float(cfg["train"]["optimizer"]["weight_decay"]),
     )
@@ -267,9 +276,9 @@ def main():
         "source_ref_run_id": cfg["transfer"].get("source_ref_run_id"),
         "source_stats_path": cfg["transfer"].get("source_stats_path"),
         "fixed_selection_rule": cfg["transfer"].get("fixed_selection_rule"),
-        "reuse_source_expert_weights": bool(cfg["transfer"].get("reuse_source_expert_weights", False)),
-        "freeze_fixed_experts": bool(cfg["transfer"].get("freeze_fixed_experts", False)),
-        "accelerate_fixed_experts": bool(cfg["transfer"].get("accelerate_fixed_experts", False)),
+        "reuse_source_expert_weights": reuse_source,
+        "freeze_fixed_experts": freeze_fixed,
+        "accelerate_fixed_experts": accelerate_fixed,
         "source_checkpoint_path": source_ckpt_loaded,
         "source_copied_experts": source_copied_experts,
         "fixed_experts": fixed_experts,
@@ -301,9 +310,9 @@ def main():
         "source_ref_run_id": cfg["transfer"].get("source_ref_run_id"),
         "source_stats_path": cfg["transfer"].get("source_stats_path"),
         "fixed_selection_rule": cfg["transfer"].get("fixed_selection_rule"),
-        "reuse_source_expert_weights": bool(cfg["transfer"].get("reuse_source_expert_weights", False)),
-        "freeze_fixed_experts": bool(cfg["transfer"].get("freeze_fixed_experts", False)),
-        "accelerate_fixed_experts": bool(cfg["transfer"].get("accelerate_fixed_experts", False)),
+        "reuse_source_expert_weights": reuse_source,
+        "freeze_fixed_experts": freeze_fixed,
+        "accelerate_fixed_experts": accelerate_fixed,
         "source_checkpoint_path": source_ckpt_loaded,
         "source_copied_experts": source_copied_experts,
         "num_experts": cfg["model"]["moe"]["num_experts"],
