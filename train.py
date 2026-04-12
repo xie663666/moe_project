@@ -44,7 +44,7 @@ def train_one_epoch(model, loader, optimizer, criterion, device):
         labels = batch["label"].to(device)
 
         optimizer.zero_grad(set_to_none=True)
-        logits, aux = model(images)
+        logits, aux = model(images, track_usage=True)
         loss = criterion(logits, labels)
         loss.backward()
         optimizer.step()
@@ -79,7 +79,7 @@ def evaluate(model, loader, criterion, device, stage_name="eval"):
         images = batch["image"].to(device)
         labels = batch["label"].to(device)
 
-        logits, aux = model(images)
+        logits, aux = model(images, track_usage=False)
         loss = criterion(logits, labels)
         acc = accuracy_from_logits(logits, labels)
 

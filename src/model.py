@@ -79,7 +79,7 @@ class SingleLayerMoE(nn.Module):
             for idx in dynamic_idx.detach().cpu().reshape(-1).tolist():
                 self.epoch_usage["moe_0"]["dynamic_selection_counts"][idx] += 1
 
-    def forward(self, x):
+    def forward(self, x, track_usage: bool = True):
         logits = self.router(x)  # [B, E]
         batch_size = x.size(0)
         fixed = self.fixed_experts
@@ -105,16 +105,22 @@ class SingleLayerMoE(nn.Module):
         selected_logits = logits.gather(1, selected_idx)
         gates = F.softmax(selected_logits, dim=1)
 
-        all_expert_outputs = torch.stack([expert(x) for expert in self.experts], dim=1)  # [B, E, D]
-        selected_outputs = all_expert_outputs.gather(
-            1, selected_idx.unsqueeze(-1).expand(-1, -1, all_expert_outputs.size(-1))
-        )
-        mixed = (selected_outputs * gates.unsqueeze(-1)).sum(dim=1)
+        mixed = torch.zeros_like(x)
+        active_experts = torch.unique(selected_idx)
+        for expert_idx in active_experts.tolist():
+            expert_mask = selected_idx.eq(expert_idx)
+            token_ids, slot_ids = expert_mask.nonzero(as_tuple=True)
+            if token_ids.numel() == 0:
+                continue
+            expert_out = self.experts[expert_idx](x[token_ids])
+            weighted = expert_out * gates[token_ids, slot_ids].unsqueeze(-1)
+            mixed.index_add_(0, token_ids, weighted)
 
         probs = F.softmax(logits, dim=1)
         router_entropy = -(probs * (probs.clamp_min(1e-8).log())).sum(dim=1).mean()
 
-        self._update_usage(selected_idx, dynamic_idx)
+        if track_usage:
+            self._update_usage(selected_idx, dynamic_idx)
         aux = {
             "selected_idx": selected_idx,
             "router_entropy": router_entropy,
@@ -149,8 +155,8 @@ class LiteCNNMoEClassifier(nn.Module):
     def consume_epoch_usage(self):
         return self.moe.consume_epoch_usage()
 
-    def forward(self, x):
+    def forward(self, x, track_usage: bool = True):
         feats = self.stem(x)
-        moe_out, aux = self.moe(feats)
+        moe_out, aux = self.moe(feats, track_usage=track_usage)
         logits = self.classifier(moe_out)
         return logits, aux
