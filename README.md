@@ -32,6 +32,32 @@ Lightweight MoE transfer experiment project for verifying:
 - `ref_dynamic`: A-source reference run for expert statistics
 - `target_dynamic`: B-target pure dynamic baseline
 - `hybrid_transfer`: B-target transfer run with fixed experts from A
+- `hybrid_random_control`: B-target control run with fixed experts sampled randomly (same `E/K/F`)
+
+## Hybrid routing details
+
+For B-task runs with top-k routing:
+- total active experts per sample: `K`
+- fixed experts: `F`
+- dynamic experts: `D = K - F`
+- dynamic experts are selected from non-fixed experts to avoid duplicates
+
+In this repo, transfer configs now support:
+- `fixed_selection_rule: source_topF_last3 | random | manual`
+- optional direct reuse of source-A fixed expert weights:
+  - `reuse_source_expert_weights: true/false`
+  - `freeze_fixed_experts: true/false`
+  - `accelerate_fixed_experts: true/false` (when frozen, run fixed experts in no-grad mode for faster training)
+  - `source_checkpoint_path` (optional override)
+- runtime controls:
+  - `model.moe.router_noise_std` (set `0.0` for no routing noise)
+  - `train.load_balance_coef` (set `0.0` to disable load-balancing regularization)
+  - per-epoch timing and top selected experts are recorded in `metrics_history.json`
+
+Recommended robust setting (default in current generators/base config):
+- multiple seeds (`--seeds 1 2 3`)
+- `train.epochs: 100`
+- disable routing noise for ablation by setting `model.moe.router_noise_std: 0.0`
 
 ## One-click usage
 

@@ -3,3 +3,8 @@ experiment:
 transfer:
   enabled: true
   fixed_selection_rule: source_topF_last3
+  fixed_expert_ids: []
+  reuse_source_expert_weights: true
+  freeze_fixed_experts: false
+  accelerate_fixed_experts: false
+  source_checkpoint_path: ""
