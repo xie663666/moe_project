@@ -36,6 +36,7 @@ def main():
         top_k=cfg["model"]["moe"]["top_k"],
         fixed_experts=ckpt.get("fixed_experts", []),
         hidden_dim=cfg["model"]["moe"]["expert_mlp_hidden_dim"],
+        router_noise_std=float(cfg["model"]["moe"].get("router_noise_std", 0.0)),
         num_classes=cfg["data"]["num_classes"],
     ).to(device)
     model.load_state_dict(ckpt["model"])

@@ -1,5 +1,6 @@
 epochs: 10
 batch_size: 128
+load_balance_coef: 0.0
 optimizer:
   lr: 0.001
   weight_decay: 0.0001
