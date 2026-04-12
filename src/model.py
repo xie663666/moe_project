@@ -45,12 +45,21 @@ class MLPExpert(nn.Module):
 
 
 class SingleLayerMoE(nn.Module):
-    def __init__(self, dim: int, num_experts: int, top_k: int, hidden_dim: int, fixed_experts: List[int] | None = None):
+    def __init__(
+        self,
+        dim: int,
+        num_experts: int,
+        top_k: int,
+        hidden_dim: int,
+        fixed_experts: List[int] | None = None,
+        router_noise_std: float = 0.0,
+    ):
         super().__init__()
         self.dim = dim
         self.num_experts = num_experts
         self.top_k = top_k
         self.fixed_experts = sorted(fixed_experts or [])
+        self.router_noise_std = float(router_noise_std)
         self.router = nn.Linear(dim, num_experts)
         self.experts = nn.ModuleList([MLPExpert(dim, hidden_dim) for _ in range(num_experts)])
         self.reset_epoch_usage()
@@ -81,6 +90,9 @@ class SingleLayerMoE(nn.Module):
 
     def forward(self, x, track_usage: bool = True):
         logits = self.router(x)  # [B, E]
+        routing_logits = logits
+        if self.training and self.router_noise_std > 0:
+            routing_logits = routing_logits + torch.randn_like(routing_logits) * self.router_noise_std
         batch_size = x.size(0)
         fixed = self.fixed_experts
         fixed_k = len(fixed)
@@ -89,10 +101,10 @@ class SingleLayerMoE(nn.Module):
             raise ValueError(f"fixed_k={fixed_k} cannot exceed top_k={self.top_k}")
 
         if dynamic_k > 0:
-            masked_logits = logits.clone()
+            masked_logits = routing_logits.clone()
             if fixed_k > 0:
                 masked_logits[:, fixed] = float("-inf")
-            dynamic_scores, dynamic_idx = torch.topk(masked_logits, k=dynamic_k, dim=1)
+            _, dynamic_idx = torch.topk(masked_logits, k=dynamic_k, dim=1)
         else:
             dynamic_idx = x.new_zeros((batch_size, 0), dtype=torch.long)
 
@@ -102,7 +114,7 @@ class SingleLayerMoE(nn.Module):
         else:
             selected_idx = dynamic_idx
 
-        selected_logits = logits.gather(1, selected_idx)
+        selected_logits = routing_logits.gather(1, selected_idx)
         gates = F.softmax(selected_logits, dim=1)
 
         mixed = torch.zeros_like(x)
@@ -116,14 +128,18 @@ class SingleLayerMoE(nn.Module):
             weighted = expert_out * gates[token_ids, slot_ids].unsqueeze(-1)
             mixed.index_add_(0, token_ids, weighted)
 
-        probs = F.softmax(logits, dim=1)
+        probs = F.softmax(routing_logits, dim=1)
         router_entropy = -(probs * (probs.clamp_min(1e-8).log())).sum(dim=1).mean()
+        importance = probs.mean(dim=0)
+        uniform = torch.full_like(importance, 1.0 / self.num_experts)
+        load_balance_loss = ((importance - uniform) ** 2).mean()
 
         if track_usage:
             self._update_usage(selected_idx, dynamic_idx)
         aux = {
             "selected_idx": selected_idx,
             "router_entropy": router_entropy,
+            "load_balance_loss": load_balance_loss,
             "fixed_k": fixed_k,
             "dynamic_k": dynamic_k,
         }
@@ -139,6 +155,7 @@ class LiteCNNMoEClassifier(nn.Module):
         top_k: int,
         fixed_experts: List[int],
         hidden_dim: int,
+        router_noise_std: float,
         num_classes: int,
     ):
         super().__init__()
@@ -149,6 +166,7 @@ class LiteCNNMoEClassifier(nn.Module):
             top_k=top_k,
             hidden_dim=hidden_dim,
             fixed_experts=fixed_experts,
+            router_noise_std=router_noise_std,
         )
         self.classifier = nn.Linear(feature_dim, num_classes)
 
