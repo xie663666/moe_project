@@ -76,6 +76,7 @@ class SingleLayerMoE(nn.Module):
                 "selection_counts": [0 for _ in range(self.num_experts)],
                 "fixed_selection_counts": [0 for _ in range(self.num_experts)],
                 "dynamic_selection_counts": [0 for _ in range(self.num_experts)],
+                "grad_tracked_selection_counts": [0 for _ in range(self.num_experts)],
             }
         }
 
@@ -84,7 +85,7 @@ class SingleLayerMoE(nn.Module):
         self.reset_epoch_usage()
         return usage
 
-    def _update_usage(self, selected_idx: torch.Tensor, dynamic_idx: torch.Tensor | None):
+    def _update_usage(self, selected_idx: torch.Tensor, dynamic_idx: torch.Tensor | None, grad_tracked_idx: torch.Tensor | None):
         flat_selected = selected_idx.detach().cpu().reshape(-1).tolist()
         for idx in flat_selected:
             self.epoch_usage["moe_0"]["selection_counts"][idx] += 1
@@ -93,6 +94,9 @@ class SingleLayerMoE(nn.Module):
         if dynamic_idx is not None and dynamic_idx.numel() > 0:
             for idx in dynamic_idx.detach().cpu().reshape(-1).tolist():
                 self.epoch_usage["moe_0"]["dynamic_selection_counts"][idx] += 1
+        if grad_tracked_idx is not None and grad_tracked_idx.numel() > 0:
+            for idx in grad_tracked_idx.detach().cpu().reshape(-1).tolist():
+                self.epoch_usage["moe_0"]["grad_tracked_selection_counts"][idx] += 1
 
     def forward(self, x, track_usage: bool = True):
         logits = self.router(x)  # [B, E]
@@ -125,6 +129,7 @@ class SingleLayerMoE(nn.Module):
 
         mixed = torch.zeros_like(x)
         active_experts = torch.unique(selected_idx)
+        grad_tracked_idx_list: List[int] = []
         for expert_idx in active_experts.tolist():
             expert_mask = selected_idx.eq(expert_idx)
             token_ids, slot_ids = expert_mask.nonzero(as_tuple=True)
@@ -136,6 +141,7 @@ class SingleLayerMoE(nn.Module):
                 expert_out = expert_out.detach()
             else:
                 expert_out = self.experts[expert_idx](x[token_ids])
+                grad_tracked_idx_list.extend([expert_idx] * token_ids.numel())
             weighted = expert_out * gates[token_ids, slot_ids].unsqueeze(-1)
             mixed.index_add_(0, token_ids, weighted)
 
@@ -146,7 +152,8 @@ class SingleLayerMoE(nn.Module):
         load_balance_loss = ((importance - uniform) ** 2).mean()
 
         if track_usage:
-            self._update_usage(selected_idx, dynamic_idx)
+            grad_tracked_idx = torch.tensor(grad_tracked_idx_list, device=x.device, dtype=torch.long) if grad_tracked_idx_list else None
+            self._update_usage(selected_idx, dynamic_idx, grad_tracked_idx)
         aux = {
             "selected_idx": selected_idx,
             "router_entropy": router_entropy,

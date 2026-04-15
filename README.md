@@ -55,6 +55,7 @@ In this repo, transfer configs now support:
   - `model.moe.router_noise_std` (set `0.0` for no routing noise)
   - `train.load_balance_coef` (set `0.0` to disable load-balancing regularization)
   - per-epoch timing and top selected experts are recorded in `metrics_history.json`
+  - expert usage now includes `grad_tracked_selection_counts` to separate total selected experts vs autograd-tracked experts
 
 Recommended robust setting (default in current generators/base config):
 - multiple seeds (`--seeds 1 2 3`)

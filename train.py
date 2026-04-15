@@ -40,17 +40,27 @@ def train_one_epoch(model, loader, optimizer, criterion, device, load_balance_co
     f1_preds = []
     router_entropy_values = []
     load_balance_values = []
+    timing_forward = 0.0
+    timing_backward = 0.0
+    timing_optimizer = 0.0
 
     for batch in tqdm(loader, desc="train", leave=False):
         images = batch["image"].to(device)
         labels = batch["label"].to(device)
 
         optimizer.zero_grad(set_to_none=True)
+        t_fwd0 = time.perf_counter()
         logits, aux = model(images, track_usage=True)
         ce_loss = criterion(logits, labels)
         loss = ce_loss + float(load_balance_coef) * aux["load_balance_loss"]
+        t_fwd1 = time.perf_counter()
         loss.backward()
+        t_bwd1 = time.perf_counter()
         optimizer.step()
+        t_opt1 = time.perf_counter()
+        timing_forward += t_fwd1 - t_fwd0
+        timing_backward += t_bwd1 - t_fwd1
+        timing_optimizer += t_opt1 - t_bwd1
 
         acc = accuracy_from_logits(logits, labels)
         preds = logits.argmax(dim=1).detach().cpu().tolist()
@@ -68,6 +78,11 @@ def train_one_epoch(model, loader, optimizer, criterion, device, load_balance_co
         "macro_f1": macro_f1_score(f1_targets, f1_preds),
         "routing_entropy": sum(router_entropy_values) / max(1, len(router_entropy_values)),
         "load_balance_loss": sum(load_balance_values) / max(1, len(load_balance_values)),
+        "timing_breakdown_sec": {
+            "forward": timing_forward,
+            "backward": timing_backward,
+            "optimizer": timing_optimizer,
+        },
     }
 
 
