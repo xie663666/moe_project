@@ -31,7 +31,7 @@ def parse_args():
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
     return parser.parse_args()
 
-S
+
 def train_one_epoch(model, loader, optimizer, criterion, device, load_balance_coef: float = 0.0):
     model.train()
     loss_meter = AverageMeter()
@@ -165,6 +165,8 @@ def main():
     criterion = nn.CrossEntropyLoss()
     load_balance_coef = float(cfg["train"].get("load_balance_coef", 0.0))
     trainable_params = [p for p in model.parameters() if p.requires_grad]
+    total_param_count = sum(p.numel() for p in model.parameters())
+    trainable_param_count = sum(p.numel() for p in trainable_params)
     optimizer = torch.optim.AdamW(
         trainable_params,
         lr=float(cfg["train"]["optimizer"]["lr"]),
@@ -282,6 +284,9 @@ def main():
         "source_checkpoint_path": source_ckpt_loaded,
         "source_copied_experts": source_copied_experts,
         "fixed_experts": fixed_experts,
+        "frozen_expert_count": len(fixed_experts) if freeze_fixed else 0,
+        "total_parameter_count": total_param_count,
+        "trainable_parameter_count": trainable_param_count,
         "best_val_epoch": best_epoch,
         "best_val_acc": best_val_acc,
         "best_test_acc": best_test_record["test"]["acc"],

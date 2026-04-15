@@ -50,6 +50,7 @@ In this repo, transfer configs now support:
   - `accelerate_fixed_experts: true/false` (when frozen, run fixed experts in no-grad mode for faster training)
   - `source_checkpoint_path` (optional override)
   - safety rule in training: `freeze_fixed_experts=true` requires `reuse_source_expert_weights=true`
+  - note: this setup reduces backward/optimizer cost for frozen experts; forward still computes `K` selected experts (algorithm remains unchanged)
 - runtime controls:
   - `model.moe.router_noise_std` (set `0.0` for no routing noise)
   - `train.load_balance_coef` (set `0.0` to disable load-balancing regularization)

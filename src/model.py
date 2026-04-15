@@ -130,7 +130,7 @@ class SingleLayerMoE(nn.Module):
             token_ids, slot_ids = expert_mask.nonzero(as_tuple=True)
             if token_ids.numel() == 0:
                 continue
-            if self.training and self.frozen_experts_no_grad and expert_idx in self.frozen_experts:
+            if self.frozen_experts_no_grad and expert_idx in self.frozen_experts:
                 with torch.no_grad():
                     expert_out = self.experts[expert_idx](x[token_ids].detach())
                 expert_out = expert_out.detach()
