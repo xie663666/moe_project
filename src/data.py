@@ -38,10 +38,12 @@ COARSE_TASK_TO_FINE = {
 
 
 def _read_cifar100_raw(root: Path, train: bool):
-    datasets.CIFAR100(root=str(root), train=True, download=True)
-    datasets.CIFAR100(root=str(root), train=False, download=True)
-
     base = root / "cifar-100-python"
+    if not base.exists():
+        raise FileNotFoundError(
+            f"CIFAR100 not found under {root}. Expected directory: {base}. "
+            "Please copy an existing cifar-100-python directory into this root instead of downloading."
+        )
     split_file = base / ("train" if train else "test")
     meta_file = base / "meta"
 
