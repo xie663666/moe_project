@@ -92,6 +92,28 @@ class CIFAR100TaskDataset(Dataset):
         }
 
 
+class CIFAR100TaskDatasetView(Dataset):
+    def __init__(self, base_dataset: CIFAR100TaskDataset, transform):
+        self.base = base_dataset
+        self.transform = transform
+        self.class_names = base_dataset.class_names
+        self.labels = base_dataset.labels
+
+    def __len__(self):
+        return len(self.base)
+
+    def __getitem__(self, index: int):
+        image = Image.fromarray(self.base.images[index])
+        if self.transform is not None:
+            image = self.transform(image)
+        return {
+            "image": image,
+            "label": torch.tensor(self.base.labels[index], dtype=torch.long),
+            "global_label": self.base.global_labels[index],
+            "index": index,
+        }
+
+
 def _stratified_split_indices(labels: List[int], val_ratio: float, seed: int) -> Tuple[List[int], List[int]]:
     by_class: Dict[int, List[int]] = {}
     for idx, label in enumerate(labels):
@@ -128,22 +150,36 @@ def build_task_dataloaders(cfg):
     task_name = cfg["data"]["task_name"]
     batch_size = int(cfg["train"]["batch_size"])
     num_workers = int(cfg["runtime"]["num_workers"])
+    pin_memory = bool(cfg["runtime"].get("pin_memory", True))
+    persistent_workers = bool(cfg["runtime"].get("persistent_workers", num_workers > 0))
+    prefetch_factor = cfg["runtime"].get("prefetch_factor", 2)
     val_ratio = float(cfg["data"]["val_ratio"])
     seed = int(cfg["experiment"]["seed"])
 
-    base_train = CIFAR100TaskDataset(dataset_root, task_name=task_name, train=True, transform=train_tf)
-    base_train_eval = CIFAR100TaskDataset(dataset_root, task_name=task_name, train=True, transform=eval_tf)
-    test_dataset = CIFAR100TaskDataset(dataset_root, task_name=task_name, train=False, transform=eval_tf)
+    base_train_raw = CIFAR100TaskDataset(dataset_root, task_name=task_name, train=True, transform=None)
+    base_test_raw = CIFAR100TaskDataset(dataset_root, task_name=task_name, train=False, transform=None)
+    base_train = CIFAR100TaskDatasetView(base_train_raw, transform=train_tf)
+    base_train_eval = CIFAR100TaskDatasetView(base_train_raw, transform=eval_tf)
+    test_dataset = CIFAR100TaskDatasetView(base_test_raw, transform=eval_tf)
 
     train_idx, val_idx = _stratified_split_indices(base_train.labels, val_ratio=val_ratio, seed=seed)
 
     train_subset = Subset(base_train, train_idx)
     val_subset = Subset(base_train_eval, val_idx)
 
+    loader_kwargs = {
+        "batch_size": batch_size,
+        "num_workers": num_workers,
+        "pin_memory": pin_memory,
+    }
+    if num_workers > 0:
+        loader_kwargs["persistent_workers"] = persistent_workers
+        loader_kwargs["prefetch_factor"] = int(prefetch_factor)
+
     loaders = {
-        "train": DataLoader(train_subset, batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=True),
-        "val": DataLoader(val_subset, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=True),
-        "test": DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=True),
+        "train": DataLoader(train_subset, shuffle=True, **loader_kwargs),
+        "val": DataLoader(val_subset, shuffle=False, **loader_kwargs),
+        "test": DataLoader(test_dataset, shuffle=False, **loader_kwargs),
     }
     meta = {
         "train_size": len(train_subset),

@@ -3,3 +3,6 @@ save_dir: results/runs
 checkpoint_dir: checkpoints
 log_dir: logs
 num_workers: 2
+pin_memory: true
+persistent_workers: true
+prefetch_factor: 2

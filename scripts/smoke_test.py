@@ -57,6 +57,7 @@ def main():
         top_k=cfg["model"]["moe"]["top_k"],
         fixed_experts=[],
         hidden_dim=cfg["model"]["moe"]["expert_mlp_hidden_dim"],
+        router_noise_std=float(cfg["model"]["moe"].get("router_noise_std", 0.0)),
         num_classes=cfg["data"]["num_classes"],
     )
     x = torch.randn(2, 3, 32, 32)
