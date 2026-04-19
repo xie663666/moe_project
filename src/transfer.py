@@ -75,12 +75,6 @@ def resolve_fixed_expert_internal_weights(cfg, fixed_experts: List[int] | None =
         raise ValueError("sum of fixed experts window_sum_counts is 0; cannot normalize fixed_expert_internal_weights")
     return [c / total for c in counts]
 
-
-def resolve_fixed_branch_weights(cfg, fixed_experts: List[int] | None = None) -> List[float]:
-    # backward-compatible alias
-    return resolve_fixed_expert_internal_weights(cfg, fixed_experts=fixed_experts)
-
-
 def resolve_branch_fusion_weights(cfg, fixed_experts: List[int] | None = None) -> tuple[float, float]:
     fixed_experts = list(resolve_fixed_experts(cfg) if fixed_experts is None else fixed_experts)
     top_k = cfg.get("model", {}).get("moe", {}).get("top_k")
@@ -112,9 +106,9 @@ def resolve_branch_fusion_weights(cfg, fixed_experts: List[int] | None = None) -
         raise ValueError("sum of window_sum_counts is 0; cannot resolve branch fusion weights")
 
     fixed_mass = float(sum(float(counts[idx]) for idx in fixed_experts))
-    beta_fixed = fixed_mass / total_mass
-    beta_dynamic = 1.0 - beta_fixed
-    return beta_fixed, beta_dynamic
+    branch_fusion_weight_fixed = fixed_mass / total_mass
+    branch_fusion_weight_dynamic = 1.0 - branch_fusion_weight_fixed
+    return branch_fusion_weight_fixed, branch_fusion_weight_dynamic
 
 
 def maybe_load_source_expert_weights(model, cfg, fixed_experts: List[int], project_root: Path):

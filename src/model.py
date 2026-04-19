@@ -177,9 +177,6 @@ class SingleLayerMoEScheme3(nn.Module):
         fixed_expert_internal_weights: List[float] | None = None,
         branch_fusion_weight_fixed: float | None = None,
         branch_fusion_weight_dynamic: float | None = None,
-        fixed_branch_weights: List[float] | None = None,
-        beta_fixed: float | None = None,
-        beta_dynamic: float | None = None,
         router_noise_std: float = 0.0,
     ):
         super().__init__()
@@ -338,10 +335,6 @@ class SingleLayerMoEScheme3(nn.Module):
             "timing_topk_sec": topk_sec,
             "timing_dynamic_softmax_sec": dynamic_softmax_sec,
             "timing_moe_block_sec": moe_block_sec,
-            # backward-compatible aliases
-            "fixed_branch_weights": self.fixed_expert_internal_weights.detach().cpu().tolist(),
-            "beta_fixed": self.branch_fusion_weight_fixed,
-            "beta_dynamic": self.branch_fusion_weight_dynamic,
         }
         return mixed, aux
 
@@ -361,9 +354,6 @@ class LiteCNNMoEClassifier(nn.Module):
         fixed_expert_internal_weights: List[float] | None = None,
         branch_fusion_weight_fixed: float | None = None,
         branch_fusion_weight_dynamic: float | None = None,
-        fixed_branch_weights: List[float] | None = None,
-        beta_fixed: float | None = None,
-        beta_dynamic: float | None = None,
     ):
         super().__init__()
         self.stem = LiteCNNStem(in_channels=in_channels, feature_dim=feature_dim)
@@ -377,9 +367,6 @@ class LiteCNNMoEClassifier(nn.Module):
                 fixed_expert_internal_weights=fixed_expert_internal_weights,
                 branch_fusion_weight_fixed=branch_fusion_weight_fixed,
                 branch_fusion_weight_dynamic=branch_fusion_weight_dynamic,
-                fixed_branch_weights=fixed_branch_weights,
-                beta_fixed=beta_fixed,
-                beta_dynamic=beta_dynamic,
                 router_noise_std=router_noise_std,
             )
         else:
