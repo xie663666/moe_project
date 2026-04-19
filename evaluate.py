@@ -9,7 +9,7 @@ import torch.nn as nn
 from src.data import build_task_dataloaders
 from src.model import LiteCNNMoEClassifier
 from src.transfer import resolve_branch_fusion_weights, resolve_fixed_branch_weights, resolve_fixed_experts
-from src.utils import accuracy_from_logits, macro_f1_score
+from src.utils import macro_f1_score
 from src.config import load_yaml
 
 
@@ -84,7 +84,7 @@ def main():
     print({
         "checkpoint": str(Path(args.checkpoint).resolve()),
         "test_loss": total_loss / max(1, total_n),
-        "test_acc": accuracy_from_logits(torch.tensor([[0.0]]), torch.tensor([0])) if False else sum(int(p == t) for p, t in zip(preds_all, targets_all)) / max(1, len(targets_all)),
+        "test_acc": sum(int(p == t) for p, t in zip(preds_all, targets_all)) / max(1, len(targets_all)),
         "test_macro_f1": macro_f1_score(targets_all, preds_all),
     })
 

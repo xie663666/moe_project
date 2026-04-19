@@ -33,7 +33,6 @@ def main():
     if not run_summary_path.exists() or not delta_path.exists() or not agg_path.exists():
         raise FileNotFoundError("run aggregate_results.py first")
 
-    run_df = pd.read_csv(run_summary_path)
     delta_df = pd.read_csv(delta_path)
     agg_df = pd.read_csv(agg_path)
 
