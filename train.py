@@ -166,8 +166,6 @@ def main():
     ensure_dir(ckpt_dir)
     ensure_dir(log_dir)
 
-    save_yaml(run_dir / "config_snapshot.yaml", cfg)
-
     loaders, dataset_meta = build_task_dataloaders(cfg)
     device = torch.device(args.device)
 
@@ -179,8 +177,8 @@ def main():
     beta_dynamic = None
     if transfer_scheme == "scheme3":
         routing_mode = "fixed_branch_dynamic_branch"
-        fixed_branch_weights = resolve_fixed_branch_weights(cfg)
-        beta_fixed, beta_dynamic = resolve_branch_fusion_weights(cfg)
+        fixed_branch_weights = resolve_fixed_branch_weights(cfg, fixed_experts=fixed_experts)
+        beta_fixed, beta_dynamic = resolve_branch_fusion_weights(cfg, fixed_experts=fixed_experts)
 
     model = LiteCNNMoEClassifier(
         in_channels=3,
@@ -224,6 +222,8 @@ def main():
     if transfer_scheme == "scheme3":
         expected_dynamic_k = int(cfg["model"]["moe"]["top_k"]) - len(fixed_experts)
         cfg["transfer"]["dynamic_k"] = expected_dynamic_k
+
+    save_yaml(run_dir / "config_snapshot.yaml", cfg)
 
     criterion = nn.CrossEntropyLoss()
     load_balance_coef = float(cfg["train"].get("load_balance_coef", 0.0))
