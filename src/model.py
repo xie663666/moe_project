@@ -174,6 +174,9 @@ class SingleLayerMoEScheme3(nn.Module):
         top_k: int,
         hidden_dim: int,
         fixed_experts: List[int] | None = None,
+        fixed_expert_internal_weights: List[float] | None = None,
+        branch_fusion_weight_fixed: float | None = None,
+        branch_fusion_weight_dynamic: float | None = None,
         fixed_branch_weights: List[float] | None = None,
         beta_fixed: float | None = None,
         beta_dynamic: float | None = None,
@@ -194,15 +197,30 @@ class SingleLayerMoEScheme3(nn.Module):
             raise ValueError(
                 f"dynamic_k={self.dynamic_k} cannot exceed non_fixed_experts={len(self.non_fixed_experts)}"
             )
+        if fixed_expert_internal_weights is None and fixed_branch_weights is not None:
+            fixed_expert_internal_weights = fixed_branch_weights
+        if branch_fusion_weight_fixed is None and beta_fixed is not None:
+            branch_fusion_weight_fixed = beta_fixed
+        if branch_fusion_weight_dynamic is None and beta_dynamic is not None:
+            branch_fusion_weight_dynamic = beta_dynamic
+
         if self.fixed_k > 0:
-            if fixed_branch_weights is None or len(fixed_branch_weights) != self.fixed_k:
-                raise ValueError("fixed_branch_weights must be provided and match fixed_k for scheme3")
-            fixed_tensor = torch.tensor(fixed_branch_weights, dtype=torch.float32)
+            if fixed_expert_internal_weights is None or len(fixed_expert_internal_weights) != self.fixed_k:
+                raise ValueError("fixed_expert_internal_weights must be provided and match fixed_k for scheme3")
+            fixed_tensor = torch.tensor(fixed_expert_internal_weights, dtype=torch.float32)
         else:
             fixed_tensor = torch.zeros(0, dtype=torch.float32)
-        self.register_buffer("fixed_branch_weights", fixed_tensor)
-        self.beta_fixed = float(beta_fixed) if beta_fixed is not None else (float(self.fixed_k) / float(self.top_k))
-        self.beta_dynamic = float(beta_dynamic) if beta_dynamic is not None else (float(self.dynamic_k) / float(self.top_k))
+        self.register_buffer("fixed_expert_internal_weights", fixed_tensor)
+        self.branch_fusion_weight_fixed = (
+            float(branch_fusion_weight_fixed)
+            if branch_fusion_weight_fixed is not None
+            else (float(self.fixed_k) / float(self.top_k))
+        )
+        self.branch_fusion_weight_dynamic = (
+            float(branch_fusion_weight_dynamic)
+            if branch_fusion_weight_dynamic is not None
+            else (float(self.dynamic_k) / float(self.top_k))
+        )
 
         self.router_noise_std = float(router_noise_std)
         self.dynamic_candidate_count = len(self.non_fixed_experts)
@@ -253,7 +271,7 @@ class SingleLayerMoEScheme3(nn.Module):
         if self.fixed_k > 0:
             fixed_out = torch.zeros_like(x)
             for slot, expert_idx in enumerate(self.fixed_experts):
-                w = self.fixed_branch_weights[slot]
+                w = self.fixed_expert_internal_weights[slot]
                 fixed_out = fixed_out + w * self.experts[expert_idx](x)
         else:
             fixed_out = torch.zeros_like(x)
@@ -296,7 +314,7 @@ class SingleLayerMoEScheme3(nn.Module):
             load_balance_loss = x.new_tensor(0.0)
             router_entropy = x.new_tensor(0.0)
 
-        mixed = self.beta_fixed * fixed_out + self.beta_dynamic * dynamic_out
+        mixed = self.branch_fusion_weight_fixed * fixed_out + self.branch_fusion_weight_dynamic * dynamic_out
 
         if track_usage:
             self._update_dynamic_usage(dynamic_selected_idx)
@@ -306,12 +324,13 @@ class SingleLayerMoEScheme3(nn.Module):
         moe_block_sec = time.perf_counter() - moe_t0
         aux = {
             "fixed_experts": list(self.fixed_experts),
-            "fixed_branch_weights": self.fixed_branch_weights.detach().cpu().tolist(),
+            "fixed_expert_internal_weights": self.fixed_expert_internal_weights.detach().cpu().tolist(),
+            "fixed_expert_weight_pairs": list(zip(self.fixed_experts, self.fixed_expert_internal_weights.detach().cpu().tolist())),
             "dynamic_selected_idx": dynamic_selected_idx,
             "fixed_k": self.fixed_k,
             "dynamic_k": self.dynamic_k,
-            "beta_fixed": self.beta_fixed,
-            "beta_dynamic": self.beta_dynamic,
+            "branch_fusion_weight_fixed": self.branch_fusion_weight_fixed,
+            "branch_fusion_weight_dynamic": self.branch_fusion_weight_dynamic,
             "branch_fusion_source": "source_task_frequency",
             "router_entropy": router_entropy,
             "load_balance_loss": load_balance_loss,
@@ -319,147 +338,10 @@ class SingleLayerMoEScheme3(nn.Module):
             "timing_topk_sec": topk_sec,
             "timing_dynamic_softmax_sec": dynamic_softmax_sec,
             "timing_moe_block_sec": moe_block_sec,
-        }
-        return mixed, aux
-
-
-class SingleLayerMoEScheme3(nn.Module):
-    def __init__(
-        self,
-        dim: int,
-        num_experts: int,
-        top_k: int,
-        hidden_dim: int,
-        fixed_experts: List[int] | None = None,
-        fixed_branch_weights: List[float] | None = None,
-        beta_fixed: float | None = None,
-        beta_dynamic: float | None = None,
-        router_noise_std: float = 0.0,
-    ):
-        super().__init__()
-        self.dim = dim
-        self.num_experts = num_experts
-        self.top_k = top_k
-        self.fixed_experts = list(fixed_experts or [])
-        self.fixed_set = set(self.fixed_experts)
-        self.non_fixed_experts = [i for i in range(num_experts) if i not in self.fixed_set]
-        self.fixed_k = len(self.fixed_experts)
-        self.dynamic_k = self.top_k - self.fixed_k
-        if self.dynamic_k < 0:
-            raise ValueError(f"fixed_k={self.fixed_k} cannot exceed top_k={self.top_k}")
-        if self.dynamic_k > len(self.non_fixed_experts):
-            raise ValueError(
-                f"dynamic_k={self.dynamic_k} cannot exceed non_fixed_experts={len(self.non_fixed_experts)}"
-            )
-        if self.fixed_k > 0:
-            if fixed_branch_weights is None or len(fixed_branch_weights) != self.fixed_k:
-                raise ValueError("fixed_branch_weights must be provided and match fixed_k for scheme3")
-            fixed_tensor = torch.tensor(fixed_branch_weights, dtype=torch.float32)
-        else:
-            fixed_tensor = torch.zeros(0, dtype=torch.float32)
-        self.register_buffer("fixed_branch_weights", fixed_tensor)
-        self.beta_fixed = float(beta_fixed) if beta_fixed is not None else (float(self.fixed_k) / float(self.top_k))
-        self.beta_dynamic = float(beta_dynamic) if beta_dynamic is not None else (float(self.dynamic_k) / float(self.top_k))
-
-        self.router_noise_std = float(router_noise_std)
-        self.dynamic_candidate_count = len(self.non_fixed_experts)
-        self.router = nn.Linear(dim, self.dynamic_candidate_count)
-        self.experts = nn.ModuleList([MLPExpert(dim, hidden_dim) for _ in range(num_experts)])
-        if self.dynamic_candidate_count > 0:
-            self.register_buffer("non_fixed_lookup", torch.tensor(self.non_fixed_experts, dtype=torch.long))
-        else:
-            self.register_buffer("non_fixed_lookup", torch.zeros(0, dtype=torch.long))
-        self.reset_epoch_usage()
-
-    def set_frozen_experts(self, frozen_experts: List[int], no_grad_mode: bool):
-        # scheme3 禁止使用 no_grad 切断 fixed branch 梯度到 stem
-        if no_grad_mode:
-            raise ValueError("scheme3 does not support no_grad_mode for fixed experts")
-        return None
-
-    def reset_epoch_usage(self):
-        self.epoch_usage = {
-            "moe_0": {
-                "selection_counts": [0 for _ in range(self.num_experts)],
-                "fixed_selection_counts": [0 for _ in range(self.num_experts)],
-                "dynamic_selection_counts": [0 for _ in range(self.num_experts)],
-                "selection_counts_note": "scheme3: selection_counts equals dynamic branch selections only",
-            }
-        }
-
-    def consume_epoch_usage(self):
-        usage = self.epoch_usage
-        self.reset_epoch_usage()
-        return usage
-
-    def _update_dynamic_usage(self, dynamic_selected_idx: torch.Tensor):
-        if dynamic_selected_idx.numel() == 0:
-            return
-        for idx in dynamic_selected_idx.detach().cpu().reshape(-1).tolist():
-            self.epoch_usage["moe_0"]["selection_counts"][idx] += 1
-            self.epoch_usage["moe_0"]["dynamic_selection_counts"][idx] += 1
-
-    def forward(self, x, track_usage: bool = True):
-        batch_size = x.size(0)
-
-        # fixed branch: independent from router
-        if self.fixed_k > 0:
-            fixed_out = torch.zeros_like(x)
-            for slot, expert_idx in enumerate(self.fixed_experts):
-                w = self.fixed_branch_weights[slot]
-                fixed_out = fixed_out + w * self.experts[expert_idx](x)
-        else:
-            fixed_out = torch.zeros_like(x)
-
-        # dynamic branch: router only on non-fixed pool (no fixed logits are computed)
-        if self.dynamic_k > 0:
-            dynamic_logits_pool = self.router(x)
-            if self.training and self.router_noise_std > 0:
-                dynamic_logits_pool = dynamic_logits_pool + torch.randn_like(dynamic_logits_pool) * self.router_noise_std
-
-            dynamic_topk_logits, dynamic_topk_pool_idx = torch.topk(dynamic_logits_pool, k=self.dynamic_k, dim=1)
-            dynamic_gates = F.softmax(dynamic_topk_logits, dim=1)
-
-            dynamic_selected_idx = self.non_fixed_lookup.to(x.device)[dynamic_topk_pool_idx]
-
-            dynamic_out = torch.zeros_like(x)
-            for slot in range(self.dynamic_k):
-                idx = dynamic_selected_idx[:, slot]
-                gate = dynamic_gates[:, slot].unsqueeze(-1)
-                for expert_idx in idx.unique().tolist():
-                    token_mask = idx.eq(expert_idx)
-                    token_ids = token_mask.nonzero(as_tuple=False).squeeze(1)
-                    expert_out = self.experts[expert_idx](x[token_ids])
-                    dynamic_out.index_add_(0, token_ids, expert_out * gate[token_ids])
-
-            dynamic_importance = F.softmax(dynamic_logits_pool, dim=1).mean(dim=0)
-            uniform = torch.full_like(dynamic_importance, 1.0 / dynamic_importance.numel())
-            load_balance_loss = ((dynamic_importance - uniform) ** 2).mean()
-            router_entropy = -(dynamic_importance * (dynamic_importance.clamp_min(1e-8).log())).sum()
-        else:
-            dynamic_selected_idx = x.new_zeros((batch_size, 0), dtype=torch.long)
-            dynamic_out = torch.zeros_like(x)
-            load_balance_loss = x.new_tensor(0.0)
-            router_entropy = x.new_tensor(0.0)
-
-        mixed = self.beta_fixed * fixed_out + self.beta_dynamic * dynamic_out
-
-        if track_usage:
-            self._update_dynamic_usage(dynamic_selected_idx)
-            for idx in self.fixed_experts:
-                self.epoch_usage["moe_0"]["fixed_selection_counts"][idx] += batch_size
-
-        aux = {
-            "fixed_experts": list(self.fixed_experts),
-            "fixed_branch_weights": self.fixed_branch_weights.detach().cpu().tolist(),
-            "dynamic_selected_idx": dynamic_selected_idx,
-            "fixed_k": self.fixed_k,
-            "dynamic_k": self.dynamic_k,
-            "beta_fixed": self.beta_fixed,
-            "beta_dynamic": self.beta_dynamic,
-            "branch_fusion_source": "source_task_frequency",
-            "router_entropy": router_entropy,
-            "load_balance_loss": load_balance_loss,
+            # backward-compatible aliases
+            "fixed_branch_weights": self.fixed_expert_internal_weights.detach().cpu().tolist(),
+            "beta_fixed": self.branch_fusion_weight_fixed,
+            "beta_dynamic": self.branch_fusion_weight_dynamic,
         }
         return mixed, aux
 
@@ -476,6 +358,9 @@ class LiteCNNMoEClassifier(nn.Module):
         router_noise_std: float,
         num_classes: int,
         routing_mode: str = "legacy_hybrid",
+        fixed_expert_internal_weights: List[float] | None = None,
+        branch_fusion_weight_fixed: float | None = None,
+        branch_fusion_weight_dynamic: float | None = None,
         fixed_branch_weights: List[float] | None = None,
         beta_fixed: float | None = None,
         beta_dynamic: float | None = None,
@@ -489,6 +374,9 @@ class LiteCNNMoEClassifier(nn.Module):
                 top_k=top_k,
                 hidden_dim=hidden_dim,
                 fixed_experts=fixed_experts,
+                fixed_expert_internal_weights=fixed_expert_internal_weights,
+                branch_fusion_weight_fixed=branch_fusion_weight_fixed,
+                branch_fusion_weight_dynamic=branch_fusion_weight_dynamic,
                 fixed_branch_weights=fixed_branch_weights,
                 beta_fixed=beta_fixed,
                 beta_dynamic=beta_dynamic,
