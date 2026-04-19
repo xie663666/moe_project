@@ -40,6 +40,10 @@ def train_one_epoch(model, loader, optimizer, criterion, device, load_balance_co
     f1_preds = []
     router_entropy_values = []
     load_balance_values = []
+    moe_block_values = []
+    router_score_values = []
+    topk_values = []
+    dynamic_softmax_values = []
     timing_forward = 0.0
     timing_backward = 0.0
     timing_optimizer = 0.0
@@ -68,6 +72,10 @@ def train_one_epoch(model, loader, optimizer, criterion, device, load_balance_co
         f1_targets.extend(labels.detach().cpu().tolist())
         router_entropy_values.append(aux["router_entropy"].item())
         load_balance_values.append(aux["load_balance_loss"].item())
+        moe_block_values.append(float(aux.get("timing_moe_block_sec", 0.0)))
+        router_score_values.append(float(aux.get("timing_router_score_sec", 0.0)))
+        topk_values.append(float(aux.get("timing_topk_sec", 0.0)))
+        dynamic_softmax_values.append(float(aux.get("timing_dynamic_softmax_sec", 0.0)))
 
         loss_meter.update(loss.item(), images.size(0))
         acc_meter.update(acc, images.size(0))
@@ -83,6 +91,12 @@ def train_one_epoch(model, loader, optimizer, criterion, device, load_balance_co
             "backward": timing_backward,
             "optimizer": timing_optimizer,
         },
+        "moe_timing_sec": {
+            "moe_block": sum(moe_block_values) / max(1, len(moe_block_values)),
+            "router_score": sum(router_score_values) / max(1, len(router_score_values)),
+            "topk_select": sum(topk_values) / max(1, len(topk_values)),
+            "dynamic_softmax": sum(dynamic_softmax_values) / max(1, len(dynamic_softmax_values)),
+        },
     }
 
 
@@ -95,6 +109,10 @@ def evaluate(model, loader, criterion, device, stage_name="eval"):
     f1_preds = []
     router_entropy_values = []
     load_balance_values = []
+    moe_block_values = []
+    router_score_values = []
+    topk_values = []
+    dynamic_softmax_values = []
 
     for batch in tqdm(loader, desc=stage_name, leave=False):
         images = batch["image"].to(device)
@@ -109,6 +127,10 @@ def evaluate(model, loader, criterion, device, stage_name="eval"):
         f1_targets.extend(labels.detach().cpu().tolist())
         router_entropy_values.append(aux["router_entropy"].item())
         load_balance_values.append(aux["load_balance_loss"].item())
+        moe_block_values.append(float(aux.get("timing_moe_block_sec", 0.0)))
+        router_score_values.append(float(aux.get("timing_router_score_sec", 0.0)))
+        topk_values.append(float(aux.get("timing_topk_sec", 0.0)))
+        dynamic_softmax_values.append(float(aux.get("timing_dynamic_softmax_sec", 0.0)))
 
         loss_meter.update(loss.item(), images.size(0))
         acc_meter.update(acc, images.size(0))
@@ -119,6 +141,12 @@ def evaluate(model, loader, criterion, device, stage_name="eval"):
         "macro_f1": macro_f1_score(f1_targets, f1_preds),
         "routing_entropy": sum(router_entropy_values) / max(1, len(router_entropy_values)),
         "load_balance_loss": sum(load_balance_values) / max(1, len(load_balance_values)),
+        "moe_timing_sec": {
+            "moe_block": sum(moe_block_values) / max(1, len(moe_block_values)),
+            "router_score": sum(router_score_values) / max(1, len(router_score_values)),
+            "topk_select": sum(topk_values) / max(1, len(topk_values)),
+            "dynamic_softmax": sum(dynamic_softmax_values) / max(1, len(dynamic_softmax_values)),
+        },
     }
 
 
