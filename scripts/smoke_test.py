@@ -14,7 +14,7 @@ import torch
 
 from src.config import load_yaml
 from src.model import LiteCNNMoEClassifier
-from src.transfer import resolve_fixed_experts
+from src.transfer import resolve_branch_fusion_weights, resolve_fixed_expert_internal_weights, resolve_fixed_experts
 
 
 def parse_args():
@@ -49,21 +49,62 @@ def main():
     assert dyn_cfg, "no generated dynamic configs"
     assert hyb_cfg, "no generated hybrid configs"
 
-    cfg = load_yaml(dyn_cfg[0])
+    dyn_cfg_data = load_yaml(dyn_cfg[0])
     model = LiteCNNMoEClassifier(
         in_channels=3,
-        feature_dim=cfg["model"]["feature_dim"],
-        num_experts=cfg["model"]["moe"]["num_experts"],
-        top_k=cfg["model"]["moe"]["top_k"],
+        feature_dim=dyn_cfg_data["model"]["feature_dim"],
+        num_experts=dyn_cfg_data["model"]["moe"]["num_experts"],
+        top_k=dyn_cfg_data["model"]["moe"]["top_k"],
         fixed_experts=[],
-        hidden_dim=cfg["model"]["moe"]["expert_mlp_hidden_dim"],
-        router_noise_std=float(cfg["model"]["moe"].get("router_noise_std", 0.0)),
-        num_classes=cfg["data"]["num_classes"],
+        hidden_dim=dyn_cfg_data["model"]["moe"]["expert_mlp_hidden_dim"],
+        router_noise_std=float(dyn_cfg_data["model"]["moe"].get("router_noise_std", 0.0)),
+        num_classes=dyn_cfg_data["data"]["num_classes"],
     )
     x = torch.randn(2, 3, 32, 32)
     logits, aux = model(x)
-    assert logits.shape == (2, cfg["data"]["num_classes"])
-    assert aux["selected_idx"].shape[1] == cfg["model"]["moe"]["top_k"]
+    assert logits.shape == (2, dyn_cfg_data["data"]["num_classes"])
+    assert aux["selected_idx"].shape[1] == dyn_cfg_data["model"]["moe"]["top_k"]
+
+    hyb_cfg_data = None
+    for path in hyb_cfg:
+        candidate = load_yaml(path)
+        if (
+            candidate.get("transfer", {}).get("transfer_scheme") == "scheme3"
+            and candidate.get("transfer", {}).get("fixed_selection_rule") == "source_topF_last3"
+            and int(candidate.get("transfer", {}).get("fixed_k", 0)) > 0
+        ):
+            hyb_cfg_data = candidate
+            break
+    if hyb_cfg_data is None:
+        hyb_cfg_data = load_yaml(hyb_cfg[0])
+        hyb_cfg_data.setdefault("transfer", {})
+        hyb_cfg_data["transfer"]["transfer_scheme"] = "scheme3"
+        hyb_cfg_data["transfer"]["fixed_selection_rule"] = "random"
+        hyb_cfg_data["transfer"]["fixed_k"] = min(1, int(hyb_cfg_data["model"]["moe"]["top_k"]))
+        hyb_cfg_data["transfer"]["source_stats_path"] = ""
+    fixed_experts = resolve_fixed_experts(hyb_cfg_data)
+    fixed_expert_internal_weights = resolve_fixed_expert_internal_weights(hyb_cfg_data, fixed_experts=fixed_experts)
+    branch_fusion_weight_fixed, branch_fusion_weight_dynamic = resolve_branch_fusion_weights(hyb_cfg_data, fixed_experts=fixed_experts)
+    scheme3_model = LiteCNNMoEClassifier(
+        in_channels=3,
+        feature_dim=hyb_cfg_data["model"]["feature_dim"],
+        num_experts=hyb_cfg_data["model"]["moe"]["num_experts"],
+        top_k=hyb_cfg_data["model"]["moe"]["top_k"],
+        fixed_experts=fixed_experts,
+        hidden_dim=hyb_cfg_data["model"]["moe"]["expert_mlp_hidden_dim"],
+        router_noise_std=float(hyb_cfg_data["model"]["moe"].get("router_noise_std", 0.0)),
+        num_classes=hyb_cfg_data["data"]["num_classes"],
+        routing_mode="fixed_branch_dynamic_branch",
+        fixed_expert_internal_weights=fixed_expert_internal_weights,
+        branch_fusion_weight_fixed=branch_fusion_weight_fixed,
+        branch_fusion_weight_dynamic=branch_fusion_weight_dynamic,
+    )
+    y = torch.randn(2, 3, 32, 32)
+    scheme3_logits, scheme3_aux = scheme3_model(y)
+    assert scheme3_logits.shape == (2, hyb_cfg_data["data"]["num_classes"])
+    assert len(scheme3_aux["fixed_expert_internal_weights"]) == len(fixed_experts)
+    assert abs(float(scheme3_aux["branch_fusion_weight_fixed"]) + float(scheme3_aux["branch_fusion_weight_dynamic"]) - 1.0) < 1e-6
+    assert "dynamic_selected_idx" in scheme3_aux
 
     print("Smoke test passed.")
     print(f"Project root: {root}")
