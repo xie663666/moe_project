@@ -196,8 +196,13 @@ class SingleLayerMoEScheme3(nn.Module):
         self.register_buffer("fixed_branch_weights", fixed_tensor)
 
         self.router_noise_std = float(router_noise_std)
-        self.router = nn.Linear(dim, num_experts)
+        self.dynamic_candidate_count = len(self.non_fixed_experts)
+        self.router = nn.Linear(dim, self.dynamic_candidate_count)
         self.experts = nn.ModuleList([MLPExpert(dim, hidden_dim) for _ in range(num_experts)])
+        if self.dynamic_candidate_count > 0:
+            self.register_buffer("non_fixed_lookup", torch.tensor(self.non_fixed_experts, dtype=torch.long))
+        else:
+            self.register_buffer("non_fixed_lookup", torch.zeros(0, dtype=torch.long))
         self.reset_epoch_usage()
 
     def set_frozen_experts(self, frozen_experts: List[int], no_grad_mode: bool):
@@ -240,18 +245,16 @@ class SingleLayerMoEScheme3(nn.Module):
         else:
             fixed_out = torch.zeros_like(x)
 
-        # dynamic branch: router only on non-fixed pool
+        # dynamic branch: router only on non-fixed pool (no fixed logits are computed)
         if self.dynamic_k > 0:
-            all_logits = self.router(x)
-            dynamic_logits_pool = all_logits[:, self.non_fixed_experts]
+            dynamic_logits_pool = self.router(x)
             if self.training and self.router_noise_std > 0:
                 dynamic_logits_pool = dynamic_logits_pool + torch.randn_like(dynamic_logits_pool) * self.router_noise_std
 
             dynamic_topk_logits, dynamic_topk_pool_idx = torch.topk(dynamic_logits_pool, k=self.dynamic_k, dim=1)
             dynamic_gates = F.softmax(dynamic_topk_logits, dim=1)
 
-            non_fixed_lookup = torch.tensor(self.non_fixed_experts, device=x.device, dtype=torch.long)
-            dynamic_selected_idx = non_fixed_lookup[dynamic_topk_pool_idx]
+            dynamic_selected_idx = self.non_fixed_lookup.to(x.device)[dynamic_topk_pool_idx]
 
             dynamic_out = torch.zeros_like(x)
             for slot in range(self.dynamic_k):
