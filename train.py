@@ -49,6 +49,7 @@ def train_one_epoch(model, loader, optimizer, criterion, device, load_balance_co
     router_score_values = []
     topk_values = []
     dynamic_softmax_values = []
+    selection_stage_total_sec = 0.0
     timing_forward = 0.0
     timing_backward = 0.0
     timing_optimizer = 0.0
@@ -78,9 +79,13 @@ def train_one_epoch(model, loader, optimizer, criterion, device, load_balance_co
         router_entropy_values.append(aux["router_entropy"].item())
         load_balance_values.append(aux["load_balance_loss"].item())
         moe_block_values.append(float(aux.get("timing_moe_block_sec", 0.0)))
-        router_score_values.append(float(aux.get("timing_router_score_sec", 0.0)))
-        topk_values.append(float(aux.get("timing_topk_sec", 0.0)))
-        dynamic_softmax_values.append(float(aux.get("timing_dynamic_softmax_sec", 0.0)))
+        router_sec = float(aux.get("timing_router_score_sec", 0.0))
+        topk_sec = float(aux.get("timing_topk_sec", 0.0))
+        dynamic_softmax_sec = float(aux.get("timing_dynamic_softmax_sec", 0.0))
+        router_score_values.append(router_sec)
+        topk_values.append(topk_sec)
+        dynamic_softmax_values.append(dynamic_softmax_sec)
+        selection_stage_total_sec += router_sec + topk_sec + dynamic_softmax_sec
 
         loss_meter.update(loss.item(), images.size(0))
         acc_meter.update(acc, images.size(0))
@@ -101,6 +106,7 @@ def train_one_epoch(model, loader, optimizer, criterion, device, load_balance_co
             "router_score": sum(router_score_values) / max(1, len(router_score_values)),
             "topk_select": sum(topk_values) / max(1, len(topk_values)),
             "dynamic_softmax": sum(dynamic_softmax_values) / max(1, len(dynamic_softmax_values)),
+            "selection_stage_total_per_epoch": selection_stage_total_sec,
         },
     }
 
@@ -330,6 +336,11 @@ def main():
     last_n_records = history[-last_n:]
     last3_test_acc_mean = sum(rec["test"]["acc"] for rec in last_n_records) / max(1, last_n)
     last3_val_acc_mean = sum(rec["val"]["acc"] for rec in last_n_records) / max(1, last_n)
+    avg_selection_stage_total_sec_per_epoch = sum(
+        rec["train"]["moe_timing_sec"].get("selection_stage_total_per_epoch", 0.0) for rec in history
+    ) / max(1, len(history))
+    avg_train_epoch_sec = sum(rec["timing_sec"]["train"] for rec in history) / max(1, len(history))
+    selection_stage_ratio_vs_train_epoch = avg_selection_stage_total_sec_per_epoch / max(1e-12, avg_train_epoch_sec)
     summary = {
         "run_id": cfg["experiment"]["run_id"],
         "mode": cfg["experiment"]["mode"],
@@ -357,13 +368,10 @@ def main():
         "source_copied_experts": source_copied_experts,
         "fixed_experts": fixed_experts,
         "fixed_expert_internal_weights": fixed_expert_internal_weights if transfer_scheme == "scheme3" else [],
-        "fixed_branch_weights": fixed_expert_internal_weights if transfer_scheme == "scheme3" else [],
         "fixed_expert_weight_pairs": list(zip(fixed_experts, fixed_expert_internal_weights)) if transfer_scheme == "scheme3" else [],
         "transfer_scheme": transfer_scheme,
         "branch_fusion_weight_fixed": branch_fusion_weight_fixed if transfer_scheme == "scheme3" else None,
         "branch_fusion_weight_dynamic": branch_fusion_weight_dynamic if transfer_scheme == "scheme3" else None,
-        "beta_fixed": branch_fusion_weight_fixed if transfer_scheme == "scheme3" else None,
-        "beta_dynamic": branch_fusion_weight_dynamic if transfer_scheme == "scheme3" else None,
         "branch_fusion_source": "source_task_frequency" if transfer_scheme == "scheme3" else None,
         "fixed_branch_frozen": bool(freeze_fixed and transfer_scheme == "scheme3"),
         "fixed_branch_independent_of_router": bool(transfer_scheme == "scheme3"),
@@ -383,6 +391,9 @@ def main():
         "final_test_routing_entropy": final_test_record["test"]["routing_entropy"],
         "last3_val_acc_mean": last3_val_acc_mean,
         "last3_test_acc_mean": last3_test_acc_mean,
+        "avg_selection_stage_total_sec_per_epoch": avg_selection_stage_total_sec_per_epoch,
+        "avg_train_epoch_sec": avg_train_epoch_sec,
+        "selection_stage_ratio_vs_train_epoch": selection_stage_ratio_vs_train_epoch,
         "train_size": dataset_meta["train_size"],
         "val_size": dataset_meta["val_size"],
         "test_size": dataset_meta["test_size"],
@@ -412,12 +423,9 @@ def main():
         "dynamic_k": cfg["transfer"]["dynamic_k"],
         "transfer_scheme": transfer_scheme,
         "fixed_expert_internal_weights": fixed_expert_internal_weights if transfer_scheme == "scheme3" else [],
-        "fixed_branch_weights": fixed_expert_internal_weights if transfer_scheme == "scheme3" else [],
         "fixed_expert_weight_pairs": list(zip(fixed_experts, fixed_expert_internal_weights)) if transfer_scheme == "scheme3" else [],
         "branch_fusion_weight_fixed": branch_fusion_weight_fixed if transfer_scheme == "scheme3" else None,
         "branch_fusion_weight_dynamic": branch_fusion_weight_dynamic if transfer_scheme == "scheme3" else None,
-        "beta_fixed": branch_fusion_weight_fixed if transfer_scheme == "scheme3" else None,
-        "beta_dynamic": branch_fusion_weight_dynamic if transfer_scheme == "scheme3" else None,
         "branch_fusion_source": "source_task_frequency" if transfer_scheme == "scheme3" else None,
         "layers": {"moe_0": {"fixed_experts": fixed_experts}},
     }
