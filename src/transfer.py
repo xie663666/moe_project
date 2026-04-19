@@ -37,7 +37,7 @@ def resolve_fixed_experts(cfg) -> List[int]:
     if rule != "source_topF_last3":
         raise ValueError(f"Unsupported fixed_selection_rule: {rule}")
 
-    stats_path = cfg["transfer"]["source_stats_path"]
+    stats_path = cfg["transfer"].get("source_stats_path", "")
     if not stats_path:
         raise ValueError("source_stats_path is required for source_topF_last3")
     stats = load_json(stats_path)
@@ -47,6 +47,28 @@ def resolve_fixed_experts(cfg) -> List[int]:
         return list(lookup[str(fixed_k)])
     ranked = layer_stats["ranked_experts"]
     return list(ranked[:fixed_k])
+
+
+def resolve_fixed_branch_weights(cfg) -> List[float]:
+    fixed_experts = resolve_fixed_experts(cfg)
+    if not fixed_experts:
+        return []
+
+    stats_path = cfg["transfer"].get("source_stats_path", "")
+    if not stats_path:
+        raise ValueError("source_stats_path is required when fixed_k > 0 for scheme3")
+
+    stats = load_json(stats_path)
+    try:
+        window_sum_counts = stats["layers"]["moe_0"]["window_sum_counts"]
+    except KeyError as exc:
+        raise KeyError("source stats missing layers.moe_0.window_sum_counts") from exc
+
+    counts = [float(window_sum_counts[idx]) for idx in fixed_experts]
+    total = sum(counts)
+    if total <= 0:
+        raise ValueError("sum of fixed experts window_sum_counts is 0; cannot normalize fixed_branch_weights")
+    return [c / total for c in counts]
 
 
 def maybe_load_source_expert_weights(model, cfg, fixed_experts: List[int], project_root: Path):

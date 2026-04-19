@@ -1,10 +1,18 @@
 experiment:
-  mode: hybrid_transfer
+  mode: scheme3_transfer
 transfer:
   enabled: true
+  transfer_scheme: scheme3
   fixed_selection_rule: source_topF_last3
   fixed_expert_ids: []
   reuse_source_expert_weights: true
-  freeze_fixed_experts: false
+  freeze_fixed_experts: true
   accelerate_fixed_experts: false
+  fixed_branch_weight_source: source_last3_counts
+  fixed_branch_use_router_weights: false
+  fixed_branch_independent_of_router: true
+  final_branch_fusion_rule: ratio_by_F_over_K
   source_checkpoint_path: ""
+model:
+  moe:
+    routing_mode: fixed_branch_dynamic_branch
