@@ -55,7 +55,7 @@ class SingleLayerMoE(nn.Module):
         self.dim = dim
         self.num_experts = num_experts
         self.top_k = top_k
-        self.fixed_experts = sorted(fixed_experts or [])
+        self.fixed_experts = list(fixed_experts or [])
         self.router_noise_std = float(router_noise_std)
         self.frozen_experts = set()
         self.frozen_experts_no_grad = False
@@ -170,13 +170,15 @@ class SingleLayerMoEScheme3(nn.Module):
         hidden_dim: int,
         fixed_experts: List[int] | None = None,
         fixed_branch_weights: List[float] | None = None,
+        beta_fixed: float | None = None,
+        beta_dynamic: float | None = None,
         router_noise_std: float = 0.0,
     ):
         super().__init__()
         self.dim = dim
         self.num_experts = num_experts
         self.top_k = top_k
-        self.fixed_experts = sorted(fixed_experts or [])
+        self.fixed_experts = list(fixed_experts or [])
         self.fixed_set = set(self.fixed_experts)
         self.non_fixed_experts = [i for i in range(num_experts) if i not in self.fixed_set]
         self.fixed_k = len(self.fixed_experts)
@@ -194,6 +196,8 @@ class SingleLayerMoEScheme3(nn.Module):
         else:
             fixed_tensor = torch.zeros(0, dtype=torch.float32)
         self.register_buffer("fixed_branch_weights", fixed_tensor)
+        self.beta_fixed = float(beta_fixed) if beta_fixed is not None else (float(self.fixed_k) / float(self.top_k))
+        self.beta_dynamic = float(beta_dynamic) if beta_dynamic is not None else (float(self.dynamic_k) / float(self.top_k))
 
         self.router_noise_std = float(router_noise_std)
         self.dynamic_candidate_count = len(self.non_fixed_experts)
@@ -276,9 +280,7 @@ class SingleLayerMoEScheme3(nn.Module):
             load_balance_loss = x.new_tensor(0.0)
             router_entropy = x.new_tensor(0.0)
 
-        beta_fixed = float(self.fixed_k) / float(self.top_k)
-        beta_dynamic = float(self.dynamic_k) / float(self.top_k)
-        mixed = beta_fixed * fixed_out + beta_dynamic * dynamic_out
+        mixed = self.beta_fixed * fixed_out + self.beta_dynamic * dynamic_out
 
         if track_usage:
             self._update_dynamic_usage(dynamic_selected_idx)
@@ -291,8 +293,9 @@ class SingleLayerMoEScheme3(nn.Module):
             "dynamic_selected_idx": dynamic_selected_idx,
             "fixed_k": self.fixed_k,
             "dynamic_k": self.dynamic_k,
-            "beta_fixed": beta_fixed,
-            "beta_dynamic": beta_dynamic,
+            "beta_fixed": self.beta_fixed,
+            "beta_dynamic": self.beta_dynamic,
+            "branch_fusion_source": "source_task_frequency",
             "router_entropy": router_entropy,
             "load_balance_loss": load_balance_loss,
         }
@@ -312,6 +315,8 @@ class LiteCNNMoEClassifier(nn.Module):
         num_classes: int,
         routing_mode: str = "legacy_hybrid",
         fixed_branch_weights: List[float] | None = None,
+        beta_fixed: float | None = None,
+        beta_dynamic: float | None = None,
     ):
         super().__init__()
         self.stem = LiteCNNStem(in_channels=in_channels, feature_dim=feature_dim)
@@ -323,6 +328,8 @@ class LiteCNNMoEClassifier(nn.Module):
                 hidden_dim=hidden_dim,
                 fixed_experts=fixed_experts,
                 fixed_branch_weights=fixed_branch_weights,
+                beta_fixed=beta_fixed,
+                beta_dynamic=beta_dynamic,
                 router_noise_std=router_noise_std,
             )
         else:

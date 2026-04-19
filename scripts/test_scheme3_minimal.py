@@ -7,7 +7,7 @@ from pathlib import Path
 import torch
 
 from src.model import LiteCNNMoEClassifier
-from src.transfer import resolve_fixed_branch_weights
+from src.transfer import resolve_branch_fusion_weights, resolve_fixed_branch_weights
 
 
 def run_case(case_name: str, num_experts: int, top_k: int, fixed_experts: list[int], counts: list[float]):
@@ -33,6 +33,7 @@ def run_case(case_name: str, num_experts: int, top_k: int, fixed_experts: list[i
             "experiment": {"seed": 1},
         }
         fixed_branch_weights = resolve_fixed_branch_weights(cfg)
+        beta_fixed, beta_dynamic = resolve_branch_fusion_weights(cfg)
 
         model = LiteCNNMoEClassifier(
             in_channels=3,
@@ -45,6 +46,8 @@ def run_case(case_name: str, num_experts: int, top_k: int, fixed_experts: list[i
             num_classes=5,
             routing_mode="fixed_branch_dynamic_branch",
             fixed_branch_weights=fixed_branch_weights,
+            beta_fixed=beta_fixed,
+            beta_dynamic=beta_dynamic,
         )
         for idx in fixed_experts:
             for p in model.moe.experts[idx].parameters():
@@ -83,6 +86,6 @@ if __name__ == "__main__":
         case_name="FMIX",
         num_experts=6,
         top_k=4,
-        fixed_experts=[1, 3],
+        fixed_experts=[3, 1],
         counts=[1, 40, 1, 20, 1, 1],
     )

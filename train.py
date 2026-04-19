@@ -13,7 +13,7 @@ from tqdm import tqdm
 from src.config import load_yaml
 from src.data import build_task_dataloaders
 from src.model import LiteCNNMoEClassifier
-from src.transfer import maybe_load_source_expert_weights, resolve_fixed_branch_weights, resolve_fixed_experts
+from src.transfer import maybe_load_source_expert_weights, resolve_branch_fusion_weights, resolve_fixed_branch_weights, resolve_fixed_experts
 from src.utils import (
     AverageMeter,
     accuracy_from_logits,
@@ -147,9 +147,12 @@ def main():
     transfer_scheme = cfg["transfer"].get("transfer_scheme", "legacy_hybrid")
     routing_mode = cfg["model"]["moe"].get("routing_mode", "legacy_hybrid")
     fixed_branch_weights: List[float] = []
+    beta_fixed = None
+    beta_dynamic = None
     if transfer_scheme == "scheme3":
         routing_mode = "fixed_branch_dynamic_branch"
         fixed_branch_weights = resolve_fixed_branch_weights(cfg)
+        beta_fixed, beta_dynamic = resolve_branch_fusion_weights(cfg)
 
     model = LiteCNNMoEClassifier(
         in_channels=3,
@@ -162,6 +165,8 @@ def main():
         num_classes=cfg["data"]["num_classes"],
         routing_mode=routing_mode,
         fixed_branch_weights=fixed_branch_weights if transfer_scheme == "scheme3" else None,
+        beta_fixed=beta_fixed if transfer_scheme == "scheme3" else None,
+        beta_dynamic=beta_dynamic if transfer_scheme == "scheme3" else None,
     ).to(device)
     source_ckpt_loaded = None
     source_copied_experts: List[int] = []
@@ -316,8 +321,9 @@ def main():
         "fixed_experts": fixed_experts,
         "fixed_branch_weights": fixed_branch_weights if transfer_scheme == "scheme3" else [],
         "transfer_scheme": transfer_scheme,
-        "beta_fixed": (len(fixed_experts) / max(1, cfg["model"]["moe"]["top_k"])) if transfer_scheme == "scheme3" else None,
-        "beta_dynamic": ((cfg["model"]["moe"]["top_k"] - len(fixed_experts)) / max(1, cfg["model"]["moe"]["top_k"])) if transfer_scheme == "scheme3" else None,
+        "beta_fixed": beta_fixed if transfer_scheme == "scheme3" else None,
+        "beta_dynamic": beta_dynamic if transfer_scheme == "scheme3" else None,
+        "branch_fusion_source": "source_task_frequency" if transfer_scheme == "scheme3" else None,
         "fixed_branch_frozen": bool(freeze_fixed and transfer_scheme == "scheme3"),
         "fixed_branch_independent_of_router": bool(transfer_scheme == "scheme3"),
         "dynamic_router_candidate_count": int(cfg["model"]["moe"]["num_experts"]) - len(fixed_experts) if transfer_scheme == "scheme3" else int(cfg["model"]["moe"]["num_experts"]),
@@ -363,6 +369,9 @@ def main():
         "dynamic_k": cfg["transfer"]["dynamic_k"],
         "transfer_scheme": transfer_scheme,
         "fixed_branch_weights": fixed_branch_weights if transfer_scheme == "scheme3" else [],
+        "beta_fixed": beta_fixed if transfer_scheme == "scheme3" else None,
+        "beta_dynamic": beta_dynamic if transfer_scheme == "scheme3" else None,
+        "branch_fusion_source": "source_task_frequency" if transfer_scheme == "scheme3" else None,
         "layers": {"moe_0": {"fixed_experts": fixed_experts}},
     }
     save_json(run_dir / "resolved_fixed_experts.json", resolved)

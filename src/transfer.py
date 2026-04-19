@@ -71,6 +71,28 @@ def resolve_fixed_branch_weights(cfg) -> List[float]:
     return [c / total for c in counts]
 
 
+def resolve_branch_fusion_weights(cfg) -> tuple[float, float]:
+    fixed_experts = resolve_fixed_experts(cfg)
+    stats_path = cfg["transfer"].get("source_stats_path", "")
+    if not stats_path:
+        raise ValueError("source_stats_path is required for scheme3 branch fusion weights")
+
+    stats = load_json(stats_path)
+    try:
+        counts = stats["layers"]["moe_0"]["window_sum_counts"]
+    except KeyError as exc:
+        raise KeyError("source stats missing layers.moe_0.window_sum_counts") from exc
+
+    total_mass = float(sum(float(v) for v in counts))
+    if total_mass <= 0:
+        raise ValueError("sum of window_sum_counts is 0; cannot resolve branch fusion weights")
+
+    fixed_mass = float(sum(float(counts[idx]) for idx in fixed_experts))
+    beta_fixed = fixed_mass / total_mass
+    beta_dynamic = 1.0 - beta_fixed
+    return beta_fixed, beta_dynamic
+
+
 def maybe_load_source_expert_weights(model, cfg, fixed_experts: List[int], project_root: Path):
     transfer_cfg = cfg.get("transfer", {})
     if not transfer_cfg.get("reuse_source_expert_weights", False):
