@@ -8,10 +8,12 @@ transfer:
   reuse_source_expert_weights: true
   freeze_fixed_experts: true
   accelerate_fixed_experts: false
-  fixed_branch_weight_source: source_last3_counts
+  # fixed branch 内部 expert 级权重：来自源任务 A 的 fixed experts 频率
+  fixed_expert_internal_weight_source: source_last3_counts
   fixed_branch_use_router_weights: false
   fixed_branch_independent_of_router: true
-  final_branch_fusion_rule: ratio_by_F_over_K
+  # fixed/dynamic 分支融合权重：训练开始前按源任务 A 的专家质量占比一次性确定并固定
+  branch_fusion_weight_source: source_task_expert_mass_ratio
   source_checkpoint_path: ""
 model:
   moe:
