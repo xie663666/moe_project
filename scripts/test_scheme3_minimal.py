@@ -3,8 +3,13 @@ from __future__ import annotations
 import json
 import tempfile
 from pathlib import Path
+import sys
 
 import torch
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.model import LiteCNNMoEClassifier
 from src.transfer import resolve_branch_fusion_weights, resolve_fixed_branch_weights
@@ -29,7 +34,7 @@ def run_case(case_name: str, num_experts: int, top_k: int, fixed_experts: list[i
                 "fixed_selection_rule": "source_topF_last3",
                 "source_stats_path": str(stats_path),
             },
-            "model": {"moe": {"num_experts": num_experts}},
+            "model": {"moe": {"num_experts": num_experts, "top_k": top_k}},
             "experiment": {"seed": 1},
         }
         fixed_branch_weights = resolve_fixed_branch_weights(cfg)

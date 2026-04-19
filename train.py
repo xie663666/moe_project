@@ -166,8 +166,6 @@ def main():
     ensure_dir(ckpt_dir)
     ensure_dir(log_dir)
 
-    save_yaml(run_dir / "config_snapshot.yaml", cfg)
-
     loaders, dataset_meta = build_task_dataloaders(cfg)
     device = torch.device(args.device)
 
@@ -179,8 +177,8 @@ def main():
     beta_dynamic = None
     if transfer_scheme == "scheme3":
         routing_mode = "fixed_branch_dynamic_branch"
-        fixed_branch_weights = resolve_fixed_branch_weights(cfg)
-        beta_fixed, beta_dynamic = resolve_branch_fusion_weights(cfg)
+        fixed_branch_weights = resolve_fixed_branch_weights(cfg, fixed_experts=fixed_experts)
+        beta_fixed, beta_dynamic = resolve_branch_fusion_weights(cfg, fixed_experts=fixed_experts)
 
     model = LiteCNNMoEClassifier(
         in_channels=3,
@@ -224,6 +222,8 @@ def main():
     if transfer_scheme == "scheme3":
         expected_dynamic_k = int(cfg["model"]["moe"]["top_k"]) - len(fixed_experts)
         cfg["transfer"]["dynamic_k"] = expected_dynamic_k
+
+    save_yaml(run_dir / "config_snapshot.yaml", cfg)
 
     criterion = nn.CrossEntropyLoss()
     load_balance_coef = float(cfg["train"].get("load_balance_coef", 0.0))
@@ -321,6 +321,10 @@ def main():
 
     best_test_record = next(rec for rec in history if rec["epoch"] == best_epoch)
     final_test_record = history[-1]
+    last_n = min(3, len(history))
+    last_n_records = history[-last_n:]
+    last3_test_acc_mean = sum(rec["test"]["acc"] for rec in last_n_records) / max(1, last_n)
+    last3_val_acc_mean = sum(rec["val"]["acc"] for rec in last_n_records) / max(1, last_n)
     summary = {
         "run_id": cfg["experiment"]["run_id"],
         "mode": cfg["experiment"]["mode"],
@@ -348,6 +352,7 @@ def main():
         "source_copied_experts": source_copied_experts,
         "fixed_experts": fixed_experts,
         "fixed_branch_weights": fixed_branch_weights if transfer_scheme == "scheme3" else [],
+        "fixed_expert_weight_pairs": list(zip(fixed_experts, fixed_branch_weights)) if transfer_scheme == "scheme3" else [],
         "transfer_scheme": transfer_scheme,
         "beta_fixed": beta_fixed if transfer_scheme == "scheme3" else None,
         "beta_dynamic": beta_dynamic if transfer_scheme == "scheme3" else None,
@@ -368,6 +373,8 @@ def main():
         "final_test_macro_f1": final_test_record["test"]["macro_f1"],
         "final_test_loss": final_test_record["test"]["loss"],
         "final_test_routing_entropy": final_test_record["test"]["routing_entropy"],
+        "last3_val_acc_mean": last3_val_acc_mean,
+        "last3_test_acc_mean": last3_test_acc_mean,
         "train_size": dataset_meta["train_size"],
         "val_size": dataset_meta["val_size"],
         "test_size": dataset_meta["test_size"],
@@ -397,6 +404,7 @@ def main():
         "dynamic_k": cfg["transfer"]["dynamic_k"],
         "transfer_scheme": transfer_scheme,
         "fixed_branch_weights": fixed_branch_weights if transfer_scheme == "scheme3" else [],
+        "fixed_expert_weight_pairs": list(zip(fixed_experts, fixed_branch_weights)) if transfer_scheme == "scheme3" else [],
         "beta_fixed": beta_fixed if transfer_scheme == "scheme3" else None,
         "beta_dynamic": beta_dynamic if transfer_scheme == "scheme3" else None,
         "branch_fusion_source": "source_task_frequency" if transfer_scheme == "scheme3" else None,
