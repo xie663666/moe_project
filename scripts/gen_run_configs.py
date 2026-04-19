@@ -215,6 +215,8 @@ def main():
                     rand_cfg["transfer"]["source_stats_path"] = ""
                     rand_cfg["transfer"]["reuse_source_expert_weights"] = False
                     rand_cfg["transfer"]["source_checkpoint_path"] = ""
+                    rand_cfg["transfer"]["transfer_scheme"] = "legacy_hybrid"
+                    rand_cfg["model"]["moe"]["routing_mode"] = "legacy_hybrid"
                     write_config(hyb_dir / f"{rand_run_id}.yaml", rand_cfg)
 
     print(f"generated configs under: {out_root}")
