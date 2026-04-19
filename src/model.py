@@ -194,6 +194,13 @@ class SingleLayerMoEScheme3(nn.Module):
             raise ValueError(
                 f"dynamic_k={self.dynamic_k} cannot exceed non_fixed_experts={len(self.non_fixed_experts)}"
             )
+        if fixed_expert_internal_weights is None and fixed_branch_weights is not None:
+            fixed_expert_internal_weights = fixed_branch_weights
+        if branch_fusion_weight_fixed is None and beta_fixed is not None:
+            branch_fusion_weight_fixed = beta_fixed
+        if branch_fusion_weight_dynamic is None and beta_dynamic is not None:
+            branch_fusion_weight_dynamic = beta_dynamic
+
         if self.fixed_k > 0:
             if fixed_expert_internal_weights is None or len(fixed_expert_internal_weights) != self.fixed_k:
                 raise ValueError("fixed_expert_internal_weights must be provided and match fixed_k for scheme3")
