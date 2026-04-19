@@ -88,6 +88,11 @@ def validate_hybrid_combo(path: Path) -> List[str]:
             errors.append(f"illegal F={f} for (E,K)=({e},{k}) in {path.name}")
     if f + d != k:
         errors.append(f"fixed_k + dynamic_k != top_k in {path.name}")
+    transfer_scheme = cfg["transfer"].get("transfer_scheme", "legacy_hybrid")
+    selection_rule = cfg["transfer"].get("fixed_selection_rule", "source_topF_last3")
+    stats_path = str(cfg["transfer"].get("source_stats_path", "")).strip()
+    if transfer_scheme == "scheme3" and f > 0 and selection_rule == "source_topF_last3" and not stats_path:
+        errors.append(f"scheme3 source_topF_last3 requires non-empty source_stats_path in {path.name}")
     return errors
 
 
