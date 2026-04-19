@@ -56,12 +56,12 @@ def main():
     ).reset_index()
     trend.to_csv(out_dir / "trend_summary_by_EK.csv", index=False)
 
-    directional = run_df[run_df["pair_id"].notna()].copy()
+    directional = delta_df[delta_df["pair_id"].notna()].copy()
     directional["pair_family"] = directional["pair_id"].str.extract(r"^(p\d+)_", expand=False)
     directional_summary = directional.groupby(["pair_family", "pair_id", "source_task", "target_task", "num_experts", "top_k", "fixed_k"], dropna=False).agg(
         mean_acc=("best_test_acc", "mean"),
         std_acc=("best_test_acc", "std"),
-        mean_delta_vs_dynamic=("best_test_acc", "mean"),
+        mean_delta_vs_dynamic=("delta_acc_vs_target_dynamic", "mean"),
         num_runs=("run_id", "count"),
     ).reset_index()
     directional_summary.to_csv(out_dir / "directional_pair_summary.csv", index=False)
