@@ -49,14 +49,19 @@ def resolve_fixed_experts(cfg) -> List[int]:
     return list(ranked[:fixed_k])
 
 
-def resolve_fixed_branch_weights(cfg) -> List[float]:
-    fixed_experts = resolve_fixed_experts(cfg)
+def resolve_fixed_branch_weights(cfg, fixed_experts: List[int] | None = None) -> List[float]:
+    fixed_experts = list(resolve_fixed_experts(cfg) if fixed_experts is None else fixed_experts)
     if not fixed_experts:
         return []
 
     stats_path = cfg["transfer"].get("source_stats_path", "")
     if not stats_path:
-        raise ValueError("source_stats_path is required when fixed_k > 0 for scheme3")
+        transfer_scheme = cfg.get("transfer", {}).get("transfer_scheme", "legacy_hybrid")
+        rule = cfg.get("transfer", {}).get("fixed_selection_rule", "source_topF_last3")
+        if transfer_scheme == "scheme3" and rule == "source_topF_last3":
+            raise ValueError("scheme3 + source_topF_last3 requires source_stats_path to resolve fixed_branch_weights")
+        uniform_w = 1.0 / float(len(fixed_experts))
+        return [uniform_w for _ in fixed_experts]
 
     stats = load_json(stats_path)
     try:
@@ -71,11 +76,25 @@ def resolve_fixed_branch_weights(cfg) -> List[float]:
     return [c / total for c in counts]
 
 
-def resolve_branch_fusion_weights(cfg) -> tuple[float, float]:
-    fixed_experts = resolve_fixed_experts(cfg)
+def resolve_branch_fusion_weights(cfg, fixed_experts: List[int] | None = None) -> tuple[float, float]:
+    fixed_experts = list(resolve_fixed_experts(cfg) if fixed_experts is None else fixed_experts)
+    top_k = cfg.get("model", {}).get("moe", {}).get("top_k")
+    if top_k is None:
+        top_k = int(cfg.get("transfer", {}).get("dynamic_k", 0)) + len(fixed_experts)
+    top_k = int(top_k)
+    if top_k <= 0:
+        raise ValueError(f"top_k must be > 0, got {top_k}")
     stats_path = cfg["transfer"].get("source_stats_path", "")
     if not stats_path:
-        raise ValueError("source_stats_path is required for scheme3 branch fusion weights")
+        transfer_scheme = cfg.get("transfer", {}).get("transfer_scheme", "legacy_hybrid")
+        rule = cfg.get("transfer", {}).get("fixed_selection_rule", "source_topF_last3")
+        if transfer_scheme == "scheme3" and rule == "source_topF_last3":
+            raise ValueError("scheme3 + source_topF_last3 requires source_stats_path to resolve branch fusion weights")
+        fixed_k = len(fixed_experts)
+        dynamic_k = top_k - fixed_k
+        if dynamic_k < 0:
+            raise ValueError(f"fixed_k={fixed_k} cannot exceed top_k={top_k}")
+        return float(fixed_k) / float(top_k), float(dynamic_k) / float(top_k)
 
     stats = load_json(stats_path)
     try:
