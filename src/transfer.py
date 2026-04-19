@@ -49,7 +49,7 @@ def resolve_fixed_experts(cfg) -> List[int]:
     return list(ranked[:fixed_k])
 
 
-def resolve_fixed_branch_weights(cfg, fixed_experts: List[int] | None = None) -> List[float]:
+def resolve_fixed_expert_internal_weights(cfg, fixed_experts: List[int] | None = None) -> List[float]:
     fixed_experts = list(resolve_fixed_experts(cfg) if fixed_experts is None else fixed_experts)
     if not fixed_experts:
         return []
@@ -59,7 +59,7 @@ def resolve_fixed_branch_weights(cfg, fixed_experts: List[int] | None = None) ->
         transfer_scheme = cfg.get("transfer", {}).get("transfer_scheme", "legacy_hybrid")
         rule = cfg.get("transfer", {}).get("fixed_selection_rule", "source_topF_last3")
         if transfer_scheme == "scheme3" and rule == "source_topF_last3":
-            raise ValueError("scheme3 + source_topF_last3 requires source_stats_path to resolve fixed_branch_weights")
+            raise ValueError("scheme3 + source_topF_last3 requires source_stats_path to resolve fixed_expert_internal_weights")
         uniform_w = 1.0 / float(len(fixed_experts))
         return [uniform_w for _ in fixed_experts]
 
@@ -72,8 +72,13 @@ def resolve_fixed_branch_weights(cfg, fixed_experts: List[int] | None = None) ->
     counts = [float(window_sum_counts[idx]) for idx in fixed_experts]
     total = sum(counts)
     if total <= 0:
-        raise ValueError("sum of fixed experts window_sum_counts is 0; cannot normalize fixed_branch_weights")
+        raise ValueError("sum of fixed experts window_sum_counts is 0; cannot normalize fixed_expert_internal_weights")
     return [c / total for c in counts]
+
+
+def resolve_fixed_branch_weights(cfg, fixed_experts: List[int] | None = None) -> List[float]:
+    # backward-compatible alias
+    return resolve_fixed_expert_internal_weights(cfg, fixed_experts=fixed_experts)
 
 
 def resolve_branch_fusion_weights(cfg, fixed_experts: List[int] | None = None) -> tuple[float, float]:

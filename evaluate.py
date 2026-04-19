@@ -8,8 +8,8 @@ import torch.nn as nn
 
 from src.data import build_task_dataloaders
 from src.model import LiteCNNMoEClassifier
-from src.transfer import resolve_branch_fusion_weights, resolve_fixed_branch_weights, resolve_fixed_experts
-from src.utils import accuracy_from_logits, macro_f1_score
+from src.transfer import resolve_branch_fusion_weights, resolve_fixed_expert_internal_weights, resolve_fixed_experts
+from src.utils import macro_f1_score
 from src.config import load_yaml
 
 
@@ -40,13 +40,13 @@ def main():
     if fixed_experts is None:
         fixed_experts = resolve_fixed_experts(merged_cfg)
 
-    fixed_branch_weights = None
-    beta_fixed = None
-    beta_dynamic = None
+    fixed_expert_internal_weights = None
+    branch_fusion_weight_fixed = None
+    branch_fusion_weight_dynamic = None
     if transfer_scheme == "scheme3":
         routing_mode = "fixed_branch_dynamic_branch"
-        fixed_branch_weights = resolve_fixed_branch_weights(merged_cfg, fixed_experts=fixed_experts)
-        beta_fixed, beta_dynamic = resolve_branch_fusion_weights(merged_cfg, fixed_experts=fixed_experts)
+        fixed_expert_internal_weights = resolve_fixed_expert_internal_weights(merged_cfg, fixed_experts=fixed_experts)
+        branch_fusion_weight_fixed, branch_fusion_weight_dynamic = resolve_branch_fusion_weights(merged_cfg, fixed_experts=fixed_experts)
 
     model = LiteCNNMoEClassifier(
         in_channels=3,
@@ -58,9 +58,9 @@ def main():
         router_noise_std=float(merged_cfg["model"]["moe"].get("router_noise_std", 0.0)),
         num_classes=merged_cfg["data"]["num_classes"],
         routing_mode=routing_mode,
-        fixed_branch_weights=fixed_branch_weights,
-        beta_fixed=beta_fixed,
-        beta_dynamic=beta_dynamic,
+        fixed_expert_internal_weights=fixed_expert_internal_weights,
+        branch_fusion_weight_fixed=branch_fusion_weight_fixed,
+        branch_fusion_weight_dynamic=branch_fusion_weight_dynamic,
     ).to(device)
     model.load_state_dict(ckpt["model"])
     model.eval()
@@ -84,7 +84,7 @@ def main():
     print({
         "checkpoint": str(Path(args.checkpoint).resolve()),
         "test_loss": total_loss / max(1, total_n),
-        "test_acc": accuracy_from_logits(torch.tensor([[0.0]]), torch.tensor([0])) if False else sum(int(p == t) for p, t in zip(preds_all, targets_all)) / max(1, len(targets_all)),
+        "test_acc": sum(int(p == t) for p, t in zip(preds_all, targets_all)) / max(1, len(targets_all)),
         "test_macro_f1": macro_f1_score(targets_all, preds_all),
     })
 

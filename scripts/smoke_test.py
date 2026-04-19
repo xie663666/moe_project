@@ -14,7 +14,7 @@ import torch
 
 from src.config import load_yaml
 from src.model import LiteCNNMoEClassifier
-from src.transfer import resolve_branch_fusion_weights, resolve_fixed_branch_weights, resolve_fixed_experts
+from src.transfer import resolve_branch_fusion_weights, resolve_fixed_expert_internal_weights, resolve_fixed_experts
 
 
 def parse_args():
@@ -83,8 +83,8 @@ def main():
         hyb_cfg_data["transfer"]["fixed_k"] = min(1, int(hyb_cfg_data["model"]["moe"]["top_k"]))
         hyb_cfg_data["transfer"]["source_stats_path"] = ""
     fixed_experts = resolve_fixed_experts(hyb_cfg_data)
-    fixed_branch_weights = resolve_fixed_branch_weights(hyb_cfg_data, fixed_experts=fixed_experts)
-    beta_fixed, beta_dynamic = resolve_branch_fusion_weights(hyb_cfg_data, fixed_experts=fixed_experts)
+    fixed_expert_internal_weights = resolve_fixed_expert_internal_weights(hyb_cfg_data, fixed_experts=fixed_experts)
+    branch_fusion_weight_fixed, branch_fusion_weight_dynamic = resolve_branch_fusion_weights(hyb_cfg_data, fixed_experts=fixed_experts)
     scheme3_model = LiteCNNMoEClassifier(
         in_channels=3,
         feature_dim=hyb_cfg_data["model"]["feature_dim"],
@@ -95,15 +95,15 @@ def main():
         router_noise_std=float(hyb_cfg_data["model"]["moe"].get("router_noise_std", 0.0)),
         num_classes=hyb_cfg_data["data"]["num_classes"],
         routing_mode="fixed_branch_dynamic_branch",
-        fixed_branch_weights=fixed_branch_weights,
-        beta_fixed=beta_fixed,
-        beta_dynamic=beta_dynamic,
+        fixed_expert_internal_weights=fixed_expert_internal_weights,
+        branch_fusion_weight_fixed=branch_fusion_weight_fixed,
+        branch_fusion_weight_dynamic=branch_fusion_weight_dynamic,
     )
     y = torch.randn(2, 3, 32, 32)
     scheme3_logits, scheme3_aux = scheme3_model(y)
     assert scheme3_logits.shape == (2, hyb_cfg_data["data"]["num_classes"])
-    assert len(scheme3_aux["fixed_branch_weights"]) == len(fixed_experts)
-    assert abs(float(scheme3_aux["beta_fixed"]) + float(scheme3_aux["beta_dynamic"]) - 1.0) < 1e-6
+    assert len(scheme3_aux["fixed_expert_internal_weights"]) == len(fixed_experts)
+    assert abs(float(scheme3_aux["branch_fusion_weight_fixed"]) + float(scheme3_aux["branch_fusion_weight_dynamic"]) - 1.0) < 1e-6
     assert "dynamic_selected_idx" in scheme3_aux
 
     print("Smoke test passed.")
