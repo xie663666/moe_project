@@ -97,6 +97,16 @@ def collect_expert_usage_rows(results_root: Path) -> List[Dict]:
             "fixed_selection_counts": total_fixed,
             "total_selection_counts": total_counts,
             "normalized_total_freq": normalized,
+            "combined_branch_selection_counts": [f + d for f, d in zip(total_fixed, total_dynamic)],
+            "normalized_combined_branch_freq": [
+                (f + d) / max(1, sum(total_fixed) + sum(total_dynamic))
+                for f, d in zip(total_fixed, total_dynamic)
+            ],
+            "selection_counts_semantics": (
+                "dynamic_only"
+                if summary.get("transfer_scheme") == "scheme3"
+                else "fixed_plus_dynamic"
+            ),
             "router_entropy_mean": entropy_mean,
         })
     return rows
@@ -110,8 +120,9 @@ def build_agg_summary(df: pd.DataFrame) -> pd.DataFrame:
     numeric_cols = [
         "best_val_acc", "best_test_acc", "best_test_macro_f1", "best_test_loss",
         "best_test_routing_entropy", "final_test_acc", "final_test_macro_f1",
-        "final_test_loss", "final_test_routing_entropy",
+        "final_test_loss", "final_test_routing_entropy", "last3_val_acc_mean", "last3_test_acc_mean",
     ]
+    numeric_cols = [col for col in numeric_cols if col in df.columns]
     agg = df.groupby(group_cols, dropna=False)[numeric_cols].agg(["mean", "std", "count"]).reset_index()
     agg.columns = ["_".join([str(part) for part in col if part]).rstrip("_") for col in agg.columns.to_flat_index()]
     if "best_test_acc_mean" in agg.columns:

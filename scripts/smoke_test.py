@@ -65,7 +65,23 @@ def main():
     assert logits.shape == (2, dyn_cfg_data["data"]["num_classes"])
     assert aux["selected_idx"].shape[1] == dyn_cfg_data["model"]["moe"]["top_k"]
 
-    hyb_cfg_data = load_yaml(hyb_cfg[0])
+    hyb_cfg_data = None
+    for path in hyb_cfg:
+        candidate = load_yaml(path)
+        if (
+            candidate.get("transfer", {}).get("transfer_scheme") == "scheme3"
+            and candidate.get("transfer", {}).get("fixed_selection_rule") == "source_topF_last3"
+            and int(candidate.get("transfer", {}).get("fixed_k", 0)) > 0
+        ):
+            hyb_cfg_data = candidate
+            break
+    if hyb_cfg_data is None:
+        hyb_cfg_data = load_yaml(hyb_cfg[0])
+        hyb_cfg_data.setdefault("transfer", {})
+        hyb_cfg_data["transfer"]["transfer_scheme"] = "scheme3"
+        hyb_cfg_data["transfer"]["fixed_selection_rule"] = "random"
+        hyb_cfg_data["transfer"]["fixed_k"] = min(1, int(hyb_cfg_data["model"]["moe"]["top_k"]))
+        hyb_cfg_data["transfer"]["source_stats_path"] = ""
     fixed_experts = resolve_fixed_experts(hyb_cfg_data)
     fixed_branch_weights = resolve_fixed_branch_weights(hyb_cfg_data, fixed_experts=fixed_experts)
     beta_fixed, beta_dynamic = resolve_branch_fusion_weights(hyb_cfg_data, fixed_experts=fixed_experts)

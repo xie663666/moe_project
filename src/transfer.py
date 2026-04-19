@@ -56,6 +56,10 @@ def resolve_fixed_branch_weights(cfg, fixed_experts: List[int] | None = None) ->
 
     stats_path = cfg["transfer"].get("source_stats_path", "")
     if not stats_path:
+        transfer_scheme = cfg.get("transfer", {}).get("transfer_scheme", "legacy_hybrid")
+        rule = cfg.get("transfer", {}).get("fixed_selection_rule", "source_topF_last3")
+        if transfer_scheme == "scheme3" and rule == "source_topF_last3":
+            raise ValueError("scheme3 + source_topF_last3 requires source_stats_path to resolve fixed_branch_weights")
         uniform_w = 1.0 / float(len(fixed_experts))
         return [uniform_w for _ in fixed_experts]
 
@@ -82,6 +86,10 @@ def resolve_branch_fusion_weights(cfg, fixed_experts: List[int] | None = None) -
         raise ValueError(f"top_k must be > 0, got {top_k}")
     stats_path = cfg["transfer"].get("source_stats_path", "")
     if not stats_path:
+        transfer_scheme = cfg.get("transfer", {}).get("transfer_scheme", "legacy_hybrid")
+        rule = cfg.get("transfer", {}).get("fixed_selection_rule", "source_topF_last3")
+        if transfer_scheme == "scheme3" and rule == "source_topF_last3":
+            raise ValueError("scheme3 + source_topF_last3 requires source_stats_path to resolve branch fusion weights")
         fixed_k = len(fixed_experts)
         dynamic_k = top_k - fixed_k
         if dynamic_k < 0:
